@@ -54,13 +54,3 @@ async def remove_pending(chat_id: int, users_ids: list[int]) -> list[int] | None
     async with await client.start_session() as session:
         async with session.start_transaction():
             return await remove()
-
-
-async def test():
-    await remove_pending(123, [456])
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(test())
