@@ -1,3 +1,5 @@
+import logging
+import warnings
 from os import environ
 from telegram.ext import (
     Application,
@@ -6,12 +8,18 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
+from telegram.warnings import PTBUserWarning
 
 from handlers import *
 
 TOKEN = environ["TOKEN"]
 ENDPOINT = environ["ENDPOINT"]
 PORT = int(environ.get("PORT", "8443"))
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+warnings.filterwarnings("error", category=PTBUserWarning)
 
 
 def registerHandlers(app: Application):

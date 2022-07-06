@@ -1,5 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 from asyncio import gather
 
 from db import add_pending, fetch_destination, remove_pending, upsert_destination, reset
@@ -91,28 +93,31 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
         request.from_user.id,
-        request.from_user.username,
+        request.from_user.username or request.from_user.full_name,
         request.chat.id,
         request.chat.username,
     )
     report = ""
-    print(f"Received join request from {user_name} in chat {chat_id}.")
 
     admins, destination = await gather(
-        get_chat_admins_ids(chat_id), fetch_destination(chat_id)
+        get_chat_admins_ids(chat_id, context.bot.id), fetch_destination(chat_id)
     )
 
     if admins:
         report += admins_ids_mkup(admins) + "\n"
     if destination:
-        report += f"User @{user_name} has just asked to join your chat @{chat_name}, you might want to accept them."
+        report += escape_markdown(
+            f"User @{user_name} has just asked to join your chat @{chat_name}, you might want to accept them."
+        )
         response = await context.bot.send_message(
-            destination, report, parse_mode="Markdown"
+            destination, report, parse_mode=ParseMode.MARKDOWN
         )
         await add_pending(chat_id, user_id, response.message_id)
     else:
-        report += f"A new user with name @{user_name} just joined, but I couldn't find any chat to notify."
+        report += escape_markdown(
+            f"A new user with name @{user_name} just joined, but I couldn't find any chat to notify."
+        )
         response = await context.bot.send_message(
-            chat_id, report, parse_mode="Markdown"
+            chat_id, report, parse_mode=ParseMode.MARKDOWN
         )
         await add_pending(chat_id, user_id, response.message_id)
