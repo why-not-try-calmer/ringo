@@ -1,11 +1,10 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown
+from telegram.helpers import escape_markdown, mention_markdown
 from asyncio import gather
 
 from db import add_pending, fetch_destination, remove_pending, upsert_destination, reset
-from requests import admins_ids_mkup, get_chat_admins_ids, remove_messages_by_id
 
 
 def parseArgs(received: str, chat_id: int) -> int | None:
@@ -22,31 +21,28 @@ def parseArgs(received: str, chat_id: int) -> int | None:
         return None
 
 
-async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    new_members = [
-        u.id
-        for u in update.message.new_chat_members
-        if update.message.new_chat_members or []
-    ]
-    if not new_members:
-        return
-    if context.bot.id in new_members:
-        # The newcomer is the bot itself
-        report = ""
-        if destination := await fetch_destination(chat_id):
-            if destination == chat_id:
-                report = f"Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here ({destination})"
-            else:
-                report = f"Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
-            await context.bot.send_message(chat_id, report)
-        else:
-            print(f"Unhandled: {update.message}")
-    else:
-        # Possibly a user who's made a join requests before
-        # so let's clean it up
-        if messages_ids := await remove_pending(chat_id, new_members):
-            await remove_messages_by_id(chat_id, messages_ids)
+def admins_ids_mkup(admins: list[ChatMember]) -> str:
+    return ", ".join(
+        [
+            mention_markdown(
+                admin.user.id, admin.user.username or admin.user.first_name
+            )
+            for admin in admins
+        ]
+    )
+
+
+def accept_or_reject_btns(
+    user_id: int, user_name: str, chat_id: int
+) -> InlineKeyboardMarkup:
+    accept = InlineKeyboardButton(
+        text="Accept", callback_data=f"accept:{user_id}:{user_name}:{chat_id}"
+    )
+    reject = InlineKeyboardButton(
+        text="Reject", callback_data=f"reject:{user_id}:{user_name}:{chat_id}"
+    )
+    keyboard = InlineKeyboardMarkup([[accept, reject]])
+    return keyboard
 
 
 async def answer_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -93,31 +89,87 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
         request.from_user.id,
-        request.from_user.username or request.from_user.full_name,
+        request.from_user.username or request.from_user.first_name,
         request.chat.id,
         request.chat.username,
     )
-    report = ""
-
+    alert = ""
     admins, destination = await gather(
-        get_chat_admins_ids(chat_id, context.bot.id), fetch_destination(chat_id)
+        context.bot.get_chat_administrators(chat_id), fetch_destination(chat_id)
     )
 
     if admins:
-        report += admins_ids_mkup(admins) + "\n"
+        alert += admins_ids_mkup(admins) + "\n"
+
+    async def closure_send(destination: int, body: str):
+        text = alert + body
+        response = await context.bot.send_message(
+            destination,
+            text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=accept_or_reject_btns(user_id, user_name, chat_id),
+        )
+        await add_pending(chat_id, user_id, response.message_id)
+
     if destination:
-        report += escape_markdown(
-            f"User @{user_name} has just asked to join your chat @{chat_name}, you might want to accept them."
-        )
-        response = await context.bot.send_message(
-            destination, report, parse_mode=ParseMode.MARKDOWN
-        )
-        await add_pending(chat_id, user_id, response.message_id)
+        body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
+        await closure_send(destination, body)
     else:
-        report += escape_markdown(
-            f"A new user with name @{user_name} just joined, but I couldn't find any chat to notify."
+        body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
+        await closure_send(chat_id, body)
+
+
+async def process_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    (verdict, user_id_str, user_name, chat_id_str) = update.callback_query.data.split(
+        ":"
+    )
+    confirmation_chat_id, admin_name = (
+        update.callback_query.message.chat.id,
+        update.callback_query.message.from_user.username
+        or update.callback_query.message.from_user.first_name,
+    )
+    if verdict == "accept":
+        await gather(
+            context.bot.approve_chat_join_request(chat_id_str, int(user_id_str)),
+            context.bot.send_message(
+                confirmation_chat_id,
+                f"User {escape_markdown(user_name)} accepted to {chat_id_str} by {escape_markdown(admin_name)}",
+            ),
         )
-        response = await context.bot.send_message(
-            chat_id, report, parse_mode=ParseMode.MARKDOWN
+    else:
+        await gather(
+            context.bot.decline_chat_join_request(chat_id_str, int(user_id_str)),
+            context.bot.send_message(
+                confirmation_chat_id,
+                f"User {escape_markdown(user_name)} denied access to {chat_id_str}",
+            ),
         )
-        await add_pending(chat_id, user_id, response.message_id)
+
+
+async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    new_members = [
+        u.id
+        for u in update.message.new_chat_members
+        if update.message.new_chat_members or []
+    ]
+    if not new_members:
+        return
+    if context.bot.id in new_members:
+        # The newcomer is the bot itself
+        report = ""
+        if destination := await fetch_destination(chat_id):
+            if destination == chat_id:
+                report = f"Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here ({destination})"
+            else:
+                report = f"Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
+            await context.bot.send_message(chat_id, report)
+        else:
+            print(f"Unhandled: {update.message}")
+    else:
+        # Possibly a user who's made a join requests before
+        # so let's clean it up
+        if messages_ids := await remove_pending(chat_id, new_members):
+            await gather(
+                *[context.bot.delete_message(chat_id, mid) for mid in messages_ids]
+            )

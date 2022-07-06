@@ -6,6 +6,7 @@ from telegram.ext import (
     ChatJoinRequestHandler,
     MessageHandler,
     CommandHandler,
+    CallbackQueryHandler,
     filters,
 )
 from telegram.warnings import PTBUserWarning
@@ -26,13 +27,22 @@ def registerHandlers(app: Application):
     """Helper for registering handlers."""
     joinReqHandler = ChatJoinRequestHandler(join_handler)
     answerHelp = CommandHandler(["help", "start", "start"], answer_help)
+    acceptReject = CallbackQueryHandler(process_cbq)
     setRoute = CommandHandler("route", set_route)
     checkRouting = CommandHandler("check", check_routing)
     resetRouting = CommandHandler("reset", reset_routing)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_member)
 
     app.add_handlers(
-        [joinReqHandler, newMember, answerHelp, setRoute, checkRouting, resetRouting]
+        [
+            joinReqHandler,
+            newMember,
+            acceptReject,
+            answerHelp,
+            setRoute,
+            checkRouting,
+            resetRouting,
+        ]
     )
     print("Handlers successfully registered")
 
