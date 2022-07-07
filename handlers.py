@@ -1,7 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from telegram.helpers import escape_markdown, mention_markdown
 from asyncio import gather
 
 from db import add_pending, fetch_destination, remove_pending, upsert_destination, reset
@@ -19,6 +18,10 @@ def parseArgs(received: str, chat_id: int) -> int | None:
             return None
     else:
         return None
+
+
+def mention_markdown(user_id: int, username: str) -> str:
+    return f"[@{username}](tg://user?id={user_id})"
 
 
 def admins_ids_mkup(admins: list[ChatMember]) -> str:
@@ -93,16 +96,13 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         request.chat.id,
         request.chat.username,
     )
-    alert = ""
+
     admins, destination = await gather(
         context.bot.get_chat_administrators(chat_id), fetch_destination(chat_id)
     )
+    alert = admins_ids_mkup(admins) if admins else ""
 
-    if admins:
-        alert += admins_ids_mkup(admins) + "\n"
-
-    async def closure_send(destination: int, body: str):
-        text = alert + body
+    async def closure_send(destination: int, text: str):
         response = await context.bot.send_message(
             destination,
             text,
@@ -113,10 +113,10 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if destination:
         body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
-        await closure_send(destination, body)
+        await closure_send(destination, alert + "\n" + body)
     else:
         body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
-        await closure_send(chat_id, body)
+        await closure_send(chat_id, alert + "\n" + body)
 
 
 async def process_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -129,21 +129,29 @@ async def process_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         or update.callback_query.message.from_user.first_name,
     )
     if verdict == "accept":
-        await gather(
-            context.bot.approve_chat_join_request(chat_id_str, int(user_id_str)),
-            context.bot.send_message(
-                confirmation_chat_id,
-                f"User {escape_markdown(user_name)} accepted to {chat_id_str} by {escape_markdown(admin_name)}",
-            ),
+        response = await context.bot.approve_chat_join_request(
+            chat_id_str, int(user_id_str)
         )
+        if response:
+            await context.bot.send_message(
+                confirmation_chat_id,
+                f"User {user_name} accepted to {chat_id_str} by {admin_name}",
+            )
+        else:
+            await context.bot.send_message(
+                confirmation_chat_id, "User already approved"
+            )
     else:
-        await gather(
-            context.bot.decline_chat_join_request(chat_id_str, int(user_id_str)),
-            context.bot.send_message(
-                confirmation_chat_id,
-                f"User {escape_markdown(user_name)} denied access to {chat_id_str}",
-            ),
+        response = await context.bot.decline_chat_join_request(
+            chat_id_str, int(user_id_str)
         )
+        if response:
+            await context.bot.send_message(
+                confirmation_chat_id,
+                f"User {user_name} denied access to {chat_id_str} by {admin_name}",
+            )
+        else:
+            await context.bot.send_message(confirmation_chat_id, "User already denied.")
 
 
 async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -173,3 +181,16 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await gather(
                 *[context.bot.delete_message(chat_id, mid) for mid in messages_ids]
             )
+
+
+if __name__ == "__main__":
+    chat_id = -1001533119579
+    user_id = 226151044
+    user_name = "ad_himself"
+    chat_name = "test"
+    reply = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
+    alert = ", ".join(
+        [mention_markdown(uid, name) for uid, name in [(user_id, user_name)]]
+    )
+    text = alert + "\n" + reply
+    print(text)
