@@ -25,13 +25,14 @@ warnings.filterwarnings("error", category=PTBUserWarning)
 
 def registerHandlers(app: Application):
     """Helper for registering handlers."""
-    joinReqHandler = ChatJoinRequestHandler(join_handler)
-    answerHelp = CommandHandler(["help", "start", "start"], answer_help)
-    acceptReject = CallbackQueryHandler(process_cbq)
-    setRoute = CommandHandler("route", set_route)
-    checkRouting = CommandHandler("check", check_routing)
-    resetRouting = CommandHandler("reset", reset_routing)
-    newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_member)
+    joinReqHandler = ChatJoinRequestHandler(wants_to_join)
+    acceptReject = CallbackQueryHandler(processing_cbq)
+    answerHelp = CommandHandler(["help", "start", "start"], answering_help)
+    setRoute = CommandHandler("route", setting_route)
+    checkRouting = CommandHandler("check", checking_routing)
+    resetRouting = CommandHandler("reset", resetting_routing)
+    setApprovalMode = CommandHandler("mode", setting_mode)
+    newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
 
     app.add_handlers(
         [
@@ -42,6 +43,7 @@ def registerHandlers(app: Application):
             setRoute,
             checkRouting,
             resetRouting,
+            setApprovalMode,
         ]
     )
     print("Handlers successfully registered")

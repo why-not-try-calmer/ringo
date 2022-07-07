@@ -1,66 +1,46 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
+from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from asyncio import gather
+from utils import (
+    accept_or_reject_btns,
+    admins_ids_mkup,
+    agree_btn,
+    mention_markdown,
+    parseArgs,
+    withAuth,
+)
+from toml import loads
 
-from db import add_pending, fetch_destination, remove_pending, upsert_destination, reset
+from db import (
+    add_pending,
+    fetch_settings,
+    get_mode,
+    remove_pending,
+    set_mode,
+    upsert_destination,
+    reset,
+)
 
-
-def parseArgs(received: str, chat_id: int) -> int | None:
-    parsed = received.split(" ")
-    l = len(parsed)
-    if l == 1 or not parsed[1]:
-        return chat_id
-    elif l == 2:
-        try:
-            return int(parsed[1])
-        except ValueError:
-            return None
-    else:
-        return None
-
-
-def mention_markdown(user_id: int, username: str) -> str:
-    return f"[{username}](tg://user?id={user_id})"
-
-
-def admins_ids_mkup(admins: list[ChatMember]) -> str:
-    return ", ".join(
-        [
-            mention_markdown(
-                admin.user.id, admin.user.username or admin.user.first_name
-            )
-            for admin in admins
-        ]
-    )
+strings = ""
+with open("./strings.toml", "r") as f:
+    r = f.read()
+    strings = loads(r)
 
 
-def accept_or_reject_btns(
-    user_id: int, user_name: str, chat_id: int
-) -> InlineKeyboardMarkup:
-    accept = InlineKeyboardButton(
-        text="Accept", callback_data=f"accept:{user_id}:{user_name}:{chat_id}"
-    )
-    reject = InlineKeyboardButton(
-        text="Reject", callback_data=f"reject:{user_id}:{user_name}:{chat_id}"
-    )
-    keyboard = InlineKeyboardMarkup([[accept, reject]])
-    return keyboard
-
-
-async def answer_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    reply = "This simple bot lets you define 'routes' of the shape 'origin:destination' such that the bot will post join requests from users from 'origin' to 'destination'.\n\nThe bot must be a member of BOTH. Also be aware that this is a 1-1 relation -- the bot routes each origin to EXACTLY ONE destination."
+    reply = strings["commands"]["help"]
     await context.bot.send_message(chat_id, reply)
 
 
-async def set_route(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@withAuth
+async def setting_route(update: Update, context: ContextTypes.DEFAULT_TYPE):
     received = update.message.text
     chat_id = update.message.chat_id
-    reply = ""
-    destination = parseArgs(received, chat_id)
 
-    if destination:
+    reply = ""
+    if destination := parseArgs(received, chat_id):
         await upsert_destination(chat_id, destination)
         reply = f"Okay, will try to route join requests made in this chat to {destination} from now on."
     else:
@@ -68,27 +48,54 @@ async def set_route(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id, reply)
 
 
-async def check_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def checking_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     reply = ""
-    if destination := await fetch_destination(chat_id):
-        if destination == chat_id:
-            reply = f"I am already routing requests from a chat to this monitoring chat. Use /route with an optional <chat_id> argument from the chat receiving join requests to change the destination."
+    settings = await fetch_settings(chat_id)
+    if settings:
+        if "destination" in settings and int(settings["destination"]) == chat_id:
+            reply = strings["checking_routing"]["destination"]
         else:
-            reply = f"I am already routing join requests to a monitoring chat. Use /route with an optional <chat_id> argument from here to change the destination."
+            reply = strings["checking_routing"]["not_destination"]
     else:
-        reply = "I am not routing any join requests. Use /route with an optional <chat_id> argument in a chat receiving join requests to add a monitoring chat. Without argument, the monitoring chat = the chat where /route is issued."
+        reply = strings["checking_routing"]["not_routing"]
     await context.bot.send_message(chat_id, reply)
 
 
-async def reset_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@withAuth
+async def resetting_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    reply = "All routing from this chat have been disabled. Use /route with an optional <chat_id> argument to start over."
+
+    reply = strings["resetting_routing"]["disabled"]
     await reset(chat_id)
     await context.bot.send_message(chat_id, reply)
 
 
-async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@withAuth
+async def setting_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat.id
+    parsed = update.message.text.split(" ")
+    l = len(parsed)
+    if l == 1 or not parsed[1]:
+        mode = await get_mode(chat_id)
+        await context.bot.send_message(
+            chat_id,
+            f"The current mode is set to: {mode}. Available options: _auto_ | _manual_",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    elif l == 2:
+        mode = parsed[1]
+        await gather(
+            set_mode(chat_id, mode),
+            context.bot.send_message(chat_id, f"Mode changed to: {mode}"),
+        )
+    else:
+        await context.bot.send_message(
+            chat_id, f"Unable to parse the following input: {update.message.text}"
+        )
+
+
+async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
         request.from_user.id,
@@ -97,10 +104,21 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         request.chat.username,
     )
 
-    admins, destination = await gather(
-        context.bot.get_chat_administrators(chat_id), fetch_destination(chat_id)
+    admins, settings = await gather(
+        context.bot.get_chat_administrators(chat_id), fetch_settings(chat_id)
     )
     alert = admins_ids_mkup(admins) if admins else ""
+
+    if not settings:
+        return
+
+    if "mode" in settings and settings["mode"] == "auto":
+        await context.bot.send_message(
+            user_id,
+            strings["wants_to_join"]["agreement"],
+            reply_markup=agree_btn(chat_id),
+        )
+        return
 
     async def closure_send(destination: int, text: str):
         response = await context.bot.send_message(
@@ -111,50 +129,79 @@ async def join_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await add_pending(chat_id, user_id, response.message_id)
 
-    if destination:
+    if "destination" in settings:
         body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
-        await closure_send(destination, alert + "\n" + body)
+        await closure_send(int(settings["destination"]), alert + "\n" + body)
     else:
         body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
         await closure_send(chat_id, alert + "\n" + body)
 
 
-async def process_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    (verdict, user_id_str, user_name, chat_id_str) = update.callback_query.data.split(
-        ":"
-    )
-    confirmation_chat_id, admin_name = (
-        update.callback_query.message.chat.id,
+@withAuth
+async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Exiting on wrong data payload
+    if not hasattr(update.callback_query, "data") or not update.callback_query.data:
+        await gather(
+            context.bot.answer_callback_query(update.callback_query.id),
+            context.bot.send_message(
+                update.callback_query.message.chat.id,
+                "Wrong 'data' payload, unable to process.",
+            ),
+        )
+        return
+
+    # 'Parsing'
+    splitted = update.callback_query.data.split(":")
+    operation, chat_id_str = splitted[0], splitted[1]
+
+    # Branch for handling confirmation in auto mode
+    if operation == "self-confirm":
+        await context.bot.approve_chat_join_request(
+            chat_id_str, update.callback_query.from_user.id
+        )
+        await context.bot.answer_callback_query(
+            update.callback_query.id, url="https://t.me/PopOS_en"
+        )
+        return
+
+    # Manual mode continues...
+    # Setting up verdict handling
+    user_id_str, user_name = splitted[2], splitted[3]
+    user_id = int(user_id_str)
+    chat_id = int(chat_id_str)
+    confirmation_chat_id = update.callback_query.message.chat.id
+    admin_name = (
         update.callback_query.from_user.username
-        or update.callback_query.from_user.first_name,
+        or update.callback_query.from_user.first_name
     )
-    if verdict == "accept":
-        response = await context.bot.approve_chat_join_request(
-            chat_id_str, int(user_id_str)
-        )
+
+    # Handling verdict
+    reply = ""
+    if operation == "accept":
+        response = await context.bot.approve_chat_join_request(chat_id, user_id)
         if response:
-            await context.bot.send_message(
-                confirmation_chat_id,
-                f"User {user_name} accepted to {chat_id_str} by {admin_name}",
-            )
+            reply = f"{user_name} accepted to {chat_id_str} by {admin_name}"
         else:
-            await context.bot.send_message(
-                confirmation_chat_id, "User already approved"
-            )
+            reply = "User already approved"
+    elif operation == "reject":
+        response = await context.bot.decline_chat_join_request(chat_id, user_id)
+        if response:
+            reply = f"{user_name} denied access to {chat_id_str} by {admin_name}"
+        else:
+            reply = "User already denied."
     else:
-        response = await context.bot.decline_chat_join_request(
-            chat_id_str, int(user_id_str)
-        )
-        if response:
-            await context.bot.send_message(
-                confirmation_chat_id,
-                f"User {user_name} denied access to {chat_id_str} by {admin_name}",
-            )
-        else:
-            await context.bot.send_message(confirmation_chat_id, "User already denied.")
+        return
+
+    # Confirmation and cleaning behind on accepted or rejected
+    async def closure_together():
+        message_id = await remove_pending(chat_id, user_id)
+        await context.bot.delete_message(confirmation_chat_id, message_id)
+
+    tasks = [context.bot.send_message(confirmation_chat_id, reply), closure_together()]
+    await gather(*tasks)
 
 
-async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     new_members = [
         u.id
@@ -163,21 +210,15 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     if not new_members:
         return
+
     if context.bot.id in new_members:
         # The newcomer is the bot itself
         report = ""
-        if destination := await fetch_destination(chat_id):
-            if destination == chat_id:
-                report = f"Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here ({destination})"
+        if settings := await fetch_settings(chat_id):
+            if int(settings["destination"]) == chat_id:
+                report = strings["has_joined"]["destination"] + settings["destination"]
             else:
-                report = f"Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
-            await context.bot.send_message(chat_id, report)
-        else:
-            print(f"Unhandled: {update.message}")
+                report = strings["has_joined"]["not_destination"]
+            await context.bot.send_message(int(settings["destination"]), report)
     else:
-        # Possibly a user who's made a join requests before
-        # so let's clean it up
-        if messages_ids := await remove_pending(chat_id, new_members):
-            await gather(
-                *[context.bot.delete_message(chat_id, mid) for mid in messages_ids]
-            )
+        print(f"A user joined!")
