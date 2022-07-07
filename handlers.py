@@ -21,7 +21,7 @@ def parseArgs(received: str, chat_id: int) -> int | None:
 
 
 def mention_markdown(user_id: int, username: str) -> str:
-    return f"[@{username}](tg://user?id={user_id})"
+    return f"[{username}](tg://user?id={user_id})"
 
 
 def admins_ids_mkup(admins: list[ChatMember]) -> str:
@@ -125,8 +125,8 @@ async def process_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     confirmation_chat_id, admin_name = (
         update.callback_query.message.chat.id,
-        update.callback_query.message.from_user.username
-        or update.callback_query.message.from_user.first_name,
+        update.callback_query.from_user.username
+        or update.callback_query.from_user.first_name,
     )
     if verdict == "accept":
         response = await context.bot.approve_chat_join_request(
@@ -181,16 +181,3 @@ async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await gather(
                 *[context.bot.delete_message(chat_id, mid) for mid in messages_ids]
             )
-
-
-if __name__ == "__main__":
-    chat_id = -1001533119579
-    user_id = 226151044
-    user_name = "ad_himself"
-    chat_name = "test"
-    reply = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
-    alert = ", ".join(
-        [mention_markdown(uid, name) for uid, name in [(user_id, user_name)]]
-    )
-    text = alert + "\n" + reply
-    print(text)
