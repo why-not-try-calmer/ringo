@@ -7,7 +7,7 @@ from utils import (
     admins_ids_mkup,
     agree_btn,
     mention_markdown,
-    parseArgs,
+    Settings,
     withAuth,
 )
 from toml import loads
@@ -40,8 +40,9 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
     reply = ""
-    if destination := parseArgs(received, chat_id):
-        await upsert_destination(chat_id, destination)
+    if settings := Settings(received):
+        if destination := settings.helper_chat_id:
+            await upsert_destination(chat_id, destination)
         reply = f"Okay, will try to route join requests made in this chat to {destination} from now on."
     else:
         reply = f"This input does not feature a correct chat_id: {received}"

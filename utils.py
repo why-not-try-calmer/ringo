@@ -1,20 +1,35 @@
 from typing import Callable
-from functools import wraps
+from dataclasses import dataclass
+from functools import wraps, reduce
+from itertools import pairwise
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def parseArgs(received: str, chat_id: int) -> int | None:
-    parsed = received.split(" ")
-    l = len(parsed)
-    if l == 1 or not parsed[1]:
-        return chat_id
-    elif l == 2:
-        try:
-            return int(parsed[1])
-        except ValueError:
-            return None
-    else:
-        return None
+@dataclass
+class Settings:
+    chat_id: int | None = None
+    chat_url: str | None = ""
+    mode: str | None = ""
+    helper_chat_id: int | None = None
+
+    def __init__(self, settings: dict | str):
+
+        if isinstance(settings, str):
+            splitted = settings.split(" ")[1:]
+            if len(splitted) % 2 != 0:
+                return
+            settings = dict(pairwise(settings))
+
+        for k, v in settings.items():
+            if k in self.__annotations__.keys():
+                setattr(self, k, v)
+
+    def __getitem__(self, k: str):
+        if k in self.__annotations__.keys():
+            return getattr(self, k)
+
+    def __dict__(self):
+        return vars(self)
 
 
 def mention_markdown(user_id: int, username: str) -> str:
@@ -76,3 +91,8 @@ def withAuth(f: Callable):
             await context.bot.send_message(chat_id, "Only admins can use this command!")
 
     return inner
+
+
+if __name__ == "__main__":
+    s = Settings("/set mode auto helper_chat_id 123 chat_url abcd")
+    print(s)
