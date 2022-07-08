@@ -16,7 +16,7 @@ class Settings:
     helper_chat_id: ChatId | None = None
     verification_msg: str | None = None
 
-    def __init__(self, settings: dict | str):
+    def __init__(self, settings: dict | str, chat_id: ChatId | None = None):
         fs = {f.name for f in fields(Settings)}
 
         if isinstance(settings, str):
@@ -32,6 +32,9 @@ class Settings:
         for k, v in settings.items():
             if k in fs:
                 setattr(self, k, v)
+
+        if chat_id:
+            self.chat_id = chat_id
 
     def __str__(self) -> str:
         d = asdict(self)

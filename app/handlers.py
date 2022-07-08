@@ -38,7 +38,7 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply = strings["settings"]["settings"] + fetched
         else:
             reply = strings["settings"]["none_found"]
-    elif settings := Settings(received):
+    elif settings := Settings(received, chat_id):
         # Set
         if updated := await upsert_settings(settings):
             reply = strings["settings"]["updated"] + updated
