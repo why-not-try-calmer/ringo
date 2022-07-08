@@ -55,38 +55,3 @@ async def set_mode(chat_id: int, mode: str):
 async def get_mode(chat_id: int) -> str:
     doc = await collection.find_one({"chat_id": chat_id})
     return doc["mode"] if "mode" in doc else "No mode set!"
-
-
-"""
-async def remove_pending(chat_id: int, users_ids: list[int]) -> list[int] | None:
-    delta = timedelta(days=3)
-    now = datetime.now()
-
-    async def remove() -> list[int] | None:
-        if doc := await collection.find_one({"chat_id": chat_id}):
-            messages_ids = [
-                v["message_id"]
-                for k, v in doc.items()
-                if k in [f"pending_{uid}" for uid in users_ids]
-            ]
-
-            keys_by_time = [
-                k
-                for k, v in doc.items()
-                if isinstance(v, dict) and "at" in v and v["at"] - now >= delta
-            ]
-
-            await collection.find_one_and_update(
-                {"chat_id": chat_id},
-                {
-                    "$unset": {f"pending_{uid}": "" for uid in users_ids}
-                    | {k: "" for k in keys_by_time}
-                },
-                upsert=True,
-            )
-            return messages_ids
-
-    async with await client.start_session() as session:
-        async with session.start_transaction():
-            return await remove()
-"""
