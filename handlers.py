@@ -31,7 +31,7 @@ with open("./strings.toml", "r") as f:
 async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     reply = strings["commands"]["help"]
-    await context.bot.send_message(chat_id, reply)
+    await context.bot.send_message(chat_id, reply, parse_mode=ParseMode.MARKDOWN)
 
 
 @withAuth

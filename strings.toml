@@ -6,7 +6,7 @@ agreement = "Hi and welcome. We hope you'll have a great time. Please mind these
 ok = "I agree, let me in"
 
 [commands]
-help = "This simple bot lets you define 'routes' of the shape 'origin:destination' such that the bot will post join requests from users from 'origin' to 'destination'.\n\nThe bot must be a member of BOTH. Also be aware that this is a 1-1 relation -- the bot routes each origin to EXACTLY ONE destination."
+help = "This bot manages user verification for your chat(s). With _/mode auto_, it will open a private chat with users requesting to join your chat (make sure you have enabled 'Join requests' and 'Users must be members to send messages' in your chat's settings). With _/mode manual_, it will notifiy this or another chat of pending join requests. Use _/route_ to have the current chat be the one receiving requests and _/route chatid_ to forward them to another chat.\nUse _/check_ to view the settings, _/reset_ to reset them."
 
 [has_joined]
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
