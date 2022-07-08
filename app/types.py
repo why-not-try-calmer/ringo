@@ -34,8 +34,6 @@ class Settings:
                 setattr(self, k, v)
 
     def __str__(self) -> str:
-        return reduce(
-            lambda acc, item: acc + f"{item[0]}: {item[1]}\n" if item[1] else "",
-            asdict(self).items(),
-            "",
-        )
+        d = asdict(self)
+        reducer = lambda acc, item: acc + f"{item[0]}: {item[1]}\n" if item[1] else acc
+        return reduce(reducer, d.items(), "")
