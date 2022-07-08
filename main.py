@@ -28,9 +28,8 @@ def registerHandlers(app: Application):
     joinReqHandler = ChatJoinRequestHandler(wants_to_join)
     acceptReject = CallbackQueryHandler(processing_cbq)
     answerHelp = CommandHandler(["help", "start", "start"], answering_help)
-    setRoute = CommandHandler("route", setting_route)
-    checkRouting = CommandHandler("check", checking_settings)
-    resetRouting = CommandHandler("reset", resetting)
+    setBot = CommandHandler("set", setting_bot)
+    reset = CommandHandler("reset", resetting)
     setApprovalMode = CommandHandler("mode", setting_mode)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
 
@@ -40,9 +39,8 @@ def registerHandlers(app: Application):
             newMember,
             acceptReject,
             answerHelp,
-            setRoute,
-            checkRouting,
-            resetRouting,
+            setBot,
+            reset,
             setApprovalMode,
         ]
     )

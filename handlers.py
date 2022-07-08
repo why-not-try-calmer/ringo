@@ -35,7 +35,7 @@ async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @withAuth
-async def setting_route(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     received = update.message.text
     chat_id = update.message.chat_id
 
