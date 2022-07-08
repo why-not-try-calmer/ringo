@@ -6,7 +6,7 @@ agreement = "Hi and welcome. We hope you'll have a great time. Please mind these
 ok = "I agree, let me in"
 
 [commands]
-help = "This bot manages user verification for your chat(s). With _/mode auto_, it will open a private chat with users requesting to join your chat (make sure you have enabled 'Join requests' and 'Users must be members to send messages' in your chat's settings). With _/mode manual_, it will notifiy this or another chat of pending join requests. Use _/route_ to have the current chat be the one receiving requests and _/route chatid_ to forward them to another chat.\nUse _/check_ to view the settings, _/reset_ to reset them.\nSource code available [here](https://github.com/why-not-try-calmer/notify-join)."
+help = "DISCLAIMER: I have written this bot literally yesterday. It is not yet able to handle chats beside's THE ONE it was originally made for. I'll let you know when it is!\nThis bot manages user verification for your chat(s). With _/mode auto_, it will open a private chat with users requesting to join your chat (make sure you have enabled 'Join requests' and 'Users must be members to send messages' in your chat's settings). With _/mode manual_, it will notifiy this or another chat of pending join requests. Use _/route_ to have the current chat be the one receiving requests and _/route chatid_ to forward them to another chat.\nUse _/check_ to view the settings, _/reset_ to reset them.\nSource code available [here](https://github.com/why-not-try-calmer/notify-join)."
 
 [has_joined]
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
