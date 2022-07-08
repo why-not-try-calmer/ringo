@@ -160,7 +160,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if operation == "self-confirm":
         await gather(
             context.bot.send_message(
-                update.callback_query.message.chat.id,
+                update.callback_query.from_user.id,
                 f"Thanks, are welcome to join {strings['my_chat']['url']}",
             ),
             context.bot.approve_chat_join_request(
