@@ -109,10 +109,12 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     alert = admins_ids_mkup(admins) if admins else ""
 
+    # Missing settings
     if not settings:
         return
 
-    if "mode" in settings and settings["mode"] == "auto":
+        # Auto mode
+        # if "mode" in settings and settings["mode"] == "auto":
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
@@ -120,6 +122,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Manual mode
     async def closure_send(destination: int, text: str):
         response = await context.bot.send_message(
             destination,
@@ -154,7 +157,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     splitted = update.callback_query.data.split(":")
     operation, chat_id_str = splitted[0], splitted[1]
 
-    # Branch for handling confirmation in auto mode
+    # Auto mode
     if operation == "self-confirm":
         await gather(
             context.bot.send_message(
@@ -168,7 +171,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Manual mode continues...
+    # Manual mode
     # Setting up verdict handling
     user_id_str, user_name = splitted[2], splitted[3]
     user_id = int(user_id_str)
@@ -179,6 +182,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         or update.callback_query.from_user.first_name
     )
 
+    # Manual mode
     # Handling verdict
     reply = ""
     if operation == "accept":
@@ -196,26 +200,28 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         return
 
+    # Manual mode
     # Confirmation and cleaning behind on accepted or rejected
     async def closure_together():
         message_id = await remove_pending(chat_id, user_id)
         await context.bot.delete_message(confirmation_chat_id, message_id)
 
-    tasks = [context.bot.send_message(confirmation_chat_id, reply), closure_together()]
-    await gather(*tasks)
+    await gather(
+        context.bot.send_message(confirmation_chat_id, reply), closure_together()
+    )
 
 
 async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     new_members = [
-        u.id
+        (u.id, u.username or u.first_name)
         for u in update.message.new_chat_members
         if update.message.new_chat_members or []
     ]
     if not new_members:
         return
 
-    if context.bot.id in new_members:
+    if context.bot.id in [uid for uid, _ in new_members]:
         # The newcomer is the bot itself
         report = ""
         if settings := await fetch_settings(chat_id):
@@ -225,4 +231,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 report = strings["has_joined"]["not_destination"]
             await context.bot.send_message(int(settings["destination"]), report)
     else:
-        print(f"A user joined!")
+        greetings = ", ".join(
+            [mention_markdown(uid, name) for uid, name in new_members]
+        )
+        await context.bot.send_message(chat_id, f"Hi there {greetings}, welcome!")
