@@ -1,38 +1,11 @@
 from typing import Callable
-from dataclasses import dataclass
-from functools import wraps, reduce
-from itertools import pairwise
+from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
-
-@dataclass
-class Settings:
-    chat_id: int | None = None
-    chat_url: str | None = ""
-    mode: str | None = ""
-    helper_chat_id: int | None = None
-
-    def __init__(self, settings: dict | str):
-
-        if isinstance(settings, str):
-            splitted = settings.split(" ")[1:]
-            if len(splitted) % 2 != 0:
-                return
-            settings = dict(pairwise(settings))
-
-        for k, v in settings.items():
-            if k in self.__annotations__.keys():
-                setattr(self, k, v)
-
-    def __getitem__(self, k: str):
-        if k in self.__annotations__.keys():
-            return getattr(self, k)
-
-    def __dict__(self):
-        return vars(self)
+from app.types import ChatId, UserId
 
 
-def mention_markdown(user_id: int, username: str) -> str:
+def mention_markdown(user_id: UserId, username: str) -> str:
     return f"[{username}](tg://user?id={user_id})"
 
 
@@ -47,13 +20,13 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
     )
 
 
-def agree_btn(text: str, chat_id: int) -> InlineKeyboardMarkup:
+def agree_btn(text: str, chat_id: ChatId) -> InlineKeyboardMarkup:
     button = InlineKeyboardButton(text=text, callback_data=f"self-confirm:{chat_id}")
     return InlineKeyboardMarkup([[button]])
 
 
 def accept_or_reject_btns(
-    user_id: int, user_name: str, chat_id: int
+    user_id: UserId, user_name: str, chat_id: ChatId
 ) -> InlineKeyboardMarkup:
     accept = InlineKeyboardButton(
         text="Accept", callback_data=f"accept:{chat_id}:{user_id}:{user_name}"
@@ -91,8 +64,3 @@ def withAuth(f: Callable):
             await context.bot.send_message(chat_id, "Only admins can use this command!")
 
     return inner
-
-
-if __name__ == "__main__":
-    s = Settings("/set mode auto helper_chat_id 123 chat_url abcd")
-    print(s)

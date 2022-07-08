@@ -2,28 +2,20 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from asyncio import gather
+from app.types import ChatId, Settings
 from utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
     mention_markdown,
-    Settings,
     withAuth,
 )
 from toml import loads
 
-from db import (
-    add_pending,
-    fetch_settings,
-    get_mode,
-    remove_pending,
-    set_mode,
-    upsert_destination,
-    reset,
-)
+from db import add_pending, remove_pending, fetch_settings, upsert_settings, reset
 
 strings = ""
-with open("./strings.toml", "r") as f:
+with open("../strings.toml", "r") as f:
     r = f.read()
     strings = loads(r)
 
@@ -38,27 +30,23 @@ async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     received = update.message.text
     chat_id = update.message.chat_id
-
     reply = ""
-    if settings := Settings(received):
-        if destination := settings.helper_chat_id:
-            await upsert_destination(chat_id, destination)
-        reply = f"Okay, will try to route join requests made in this chat to {destination} from now on."
-    else:
-        reply = f"This input does not feature a correct chat_id: {received}"
-    await context.bot.send_message(chat_id, reply)
 
-
-async def checking_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
-    reply = f"This chat's id: {chat_id}"
-    if settings := await fetch_settings(chat_id):
-        if "mode" in settings:
-            reply += f"\nMode: {settings['mode']}"
-        if "destination" in settings:
-            reply += f"\nVerification context: {settings['destination'] if settings['mode'] != 'auto' else 'private chat with the bot (auto)'}."
+    if len(received) <= 5:
+        # Get
+        if fetched := await fetch_settings(chat_id):
+            reply = strings["settings"]["settings"] + fetched
+        else:
+            reply = strings["settings"]["none_found"]
+    elif settings := Settings(received):
+        # Set
+        if updated := await upsert_settings(settings):
+            reply = strings["settings"]["updated"] + updated
+        else:
+            reply = strings["settings"]["failed_to_update"]
     else:
-        reply += "\n" + strings["settings"]["not_found"]
+        # No parse
+        reply = strings["settings"]["failed_to_parse"]
     await context.bot.send_message(chat_id, reply)
 
 
@@ -68,30 +56,6 @@ async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply = strings["settings"]["reset"]
     await gather(reset(chat_id), context.bot.send_message(chat_id, reply))
-
-
-@withAuth
-async def setting_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat.id
-    parsed = update.message.text.split(" ")
-    l = len(parsed)
-    if l == 1 or not parsed[1]:
-        mode = await get_mode(chat_id)
-        await context.bot.send_message(
-            chat_id,
-            f"The current mode is set to: {mode}. Available options: _auto_ | _manual_",
-            parse_mode=ParseMode.MARKDOWN,
-        )
-    elif l == 2:
-        mode = parsed[1]
-        await gather(
-            set_mode(chat_id, mode),
-            context.bot.send_message(chat_id, f"Mode changed to: {mode}"),
-        )
-    else:
-        await context.bot.send_message(
-            chat_id, f"Unable to parse the following input: {update.message.text}"
-        )
 
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -113,7 +77,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Auto mode
-    if "mode" in settings and settings["mode"] == "auto":
+    if hasattr(settings, "mode") and settings.mode == "auto":
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
@@ -122,7 +86,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Manual mode
-    async def closure_send(destination: int, text: str):
+    async def closure_send(destination: ChatId, text: str):
         response = await context.bot.send_message(
             destination,
             text,
@@ -131,9 +95,9 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await add_pending(chat_id, user_id, response.message_id)
 
-    if "destination" in settings:
+    if hasattr(settings, "helper_chat_id") and settings.helper_chat_id:
         body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
-        await closure_send(int(settings["destination"]), alert + "\n" + body)
+        await closure_send(settings.helper_chat_id, alert + "\n" + body)
     else:
         body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
         await closure_send(chat_id, alert + "\n" + body)
@@ -161,7 +125,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await gather(
             context.bot.send_message(
                 update.callback_query.from_user.id,
-                f"Thanks, are welcome to join {strings['my_chat']['url']}",
+                f"Thanks, are welcome to join {strings['chat']['url']}",
             ),
             context.bot.approve_chat_join_request(
                 chat_id_str, update.callback_query.from_user.id
@@ -224,11 +188,14 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # The newcomer is the bot itself
         report = ""
         if settings := await fetch_settings(chat_id):
-            if int(settings["destination"]) == chat_id:
-                report = strings["has_joined"]["destination"] + settings["destination"]
+            if getattr(settings, "helper_chat_id"):
+                report = (
+                    f"{strings['has_joined']['destination']} {settings.helper_chat_id}"
+                )
             else:
                 report = strings["has_joined"]["not_destination"]
-            await context.bot.send_message(int(settings["destination"]), report)
+            if settings.helper_chat_id:
+                await context.bot.send_message(settings.helper_chat_id, report)
     else:
         greetings = ", ".join(
             [mention_markdown(uid, name) for uid, name in new_members]

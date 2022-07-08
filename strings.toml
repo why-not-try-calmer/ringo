@@ -1,4 +1,4 @@
-[my_chat]
+[chat]
 url = "https://t.me/PopOs_en"
 
 [wants_to_join]
@@ -12,11 +12,10 @@ help = "This bot manages user verification for your chat(s). With _/mode auto_, 
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
 not_destination = "Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
 
-[checking_routing]
-destination = "I am already routing requests from a chat to this monitoring chat. Use /route with an optional <chat_id> argument from the chat receiving join requests to change the destination."
-not_destination = "I am already routing join requests to a monitoring chat. Use /route with an optional <chat_id> argument from here to change the destination."
-not_routing = "I am not routing any join requests. Use /route with an optional <chat_id> argument in a chat receiving join requests to add a monitoring chat. Without argument, the monitoring chat = the chat where /route is issued."
-
 [settings]
+settings = "You settings read:\n"
+updated = "Thanks, your new settings read:\n" 
+failed_to_parse = "Unable to parse! You need to pass pairs of key-values separated by spaces, as in:\n key1 val1 key2 val2... The list of keys is: "
+failed_to_update = "Unable to update! There might be an issue with the database."
 reset = "All settings reset. Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
-not_found = "Not settings found! Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
+none_found = "Not settings found! Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
