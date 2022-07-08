@@ -19,4 +19,4 @@ not_routing = "I am not routing any join requests. Use /route with an optional <
 
 [settings]
 reset = "All settings reset. Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
-not_found = ""Not settings found! Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
+not_found = "Not settings found! Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
