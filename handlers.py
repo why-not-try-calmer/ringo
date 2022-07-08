@@ -116,9 +116,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
-            reply_markup=agree_btn(
-                strings["wants_to_join"]["ok"], strings["my_chat"]["url"]
-            ),
+            reply_markup=agree_btn(strings["wants_to_join"]["ok"], chat_id),
         )
         return
 
