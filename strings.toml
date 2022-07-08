@@ -2,7 +2,7 @@
 url = "https://t.me/PopOs_en"
 
 [wants_to_join]
-agreement = "Hi and welcome to https://t.me/PopOs_en! We hope you'll have a great time. Please mind these 3 rules:\n1) Be respectful: address people as you would address them in a non-digital setting.\n2) Do your research: before asking questions, search this chat for answers, as well as https://support.system76.com/, https://www.reddit.com/r/pop_os/ and your favorite web engine.\n3) Be relevant: this chat is primarily about Pop!_OS, one of the few distributions that really cares about your hardware, user experience and productivity. We tolerate broader themes in the range of Linux, software and computers, but please try to minimize offtopic adventures.\nFinally, notice that the chat is bridged to Matrix (another messaging service). \n\nNow use the button below to confirm you agree!"
+agreement = "Hi and welcome. We hope you'll have a great time. Please mind these 3 rules:\n1) Be respectful: address people as you would address them in a non-digital setting.\n2) Do your research: before asking questions, search this chat for answers, as well as https://support.system76.com/, https://www.reddit.com/r/pop_os/ and your favorite web engine.\n3) Be relevant: this chat is primarily about Pop!_OS, one of the few distributions that really cares about your hardware, user experience and productivity. We tolerate broader themes in the range of Linux, software and computers, but please try to minimize offtopic adventures.\nFinally, notice that the chat is bridged to Matrix (another messaging service). \n\nNow use the button below to confirm you agree!"
 ok = "I agree, let me in"
 
 [commands]

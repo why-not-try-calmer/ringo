@@ -113,8 +113,8 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not settings:
         return
 
-        # Auto mode
-        # if "mode" in settings and settings["mode"] == "auto":
+    # Auto mode
+    if "mode" in settings and settings["mode"] == "auto":
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
