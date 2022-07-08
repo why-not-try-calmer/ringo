@@ -2,22 +2,10 @@ from typing import Callable
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
-
-def parseArgs(received: str, chat_id: int) -> int | None:
-    parsed = received.split(" ")
-    l = len(parsed)
-    if l == 1 or not parsed[1]:
-        return chat_id
-    elif l == 2:
-        try:
-            return int(parsed[1])
-        except ValueError:
-            return None
-    else:
-        return None
+from app.types import ChatId, UserId
 
 
-def mention_markdown(user_id: int, username: str) -> str:
+def mention_markdown(user_id: UserId, username: str) -> str:
     return f"[{username}](tg://user?id={user_id})"
 
 
@@ -32,13 +20,13 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
     )
 
 
-def agree_btn(text: str, chat_id: int) -> InlineKeyboardMarkup:
+def agree_btn(text: str, chat_id: ChatId) -> InlineKeyboardMarkup:
     button = InlineKeyboardButton(text=text, callback_data=f"self-confirm:{chat_id}")
     return InlineKeyboardMarkup([[button]])
 
 
 def accept_or_reject_btns(
-    user_id: int, user_name: str, chat_id: int
+    user_id: UserId, user_name: str, chat_id: ChatId
 ) -> InlineKeyboardMarkup:
     accept = InlineKeyboardButton(
         text="Accept", callback_data=f"accept:{chat_id}:{user_id}:{user_name}"
