@@ -234,4 +234,6 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
         greetings = ", ".join(
             [mention_markdown(uid, name) for uid, name in new_members]
         )
-        await context.bot.send_message(chat_id, f"Hi there {greetings}, welcome!")
+        await context.bot.send_message(
+            chat_id, f"Hi there {greetings}, welcome!", parse_mode=ParseMode.MARKDOWN
+        )
