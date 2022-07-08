@@ -32,10 +32,8 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
     )
 
 
-def agree_btn(chat_id: int) -> InlineKeyboardMarkup:
-    button = InlineKeyboardButton(
-        text="I agree, let me in", data=f"self-confirm:{chat_id}"
-    )
+def agree_btn(url: str) -> InlineKeyboardMarkup:
+    button = InlineKeyboardButton(text="I agree, let me in", url=url)
     return InlineKeyboardMarkup([[button]])
 
 
@@ -66,6 +64,10 @@ def withAuth(f: Callable):
             if hasattr(update, "callback_query") and update.callback_query
             else update.message.from_user.id
         )
+
+        if chat_id == user_id:
+            # Private message, which means the bot vouches for the user
+            return await f(*args, **kwargs)
 
         admins = await context.bot.get_chat_administrators(chat_id)
         if user_id in [admin.user.id for admin in admins]:

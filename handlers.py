@@ -116,7 +116,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
-            reply_markup=agree_btn(chat_id),
+            reply_markup=agree_btn(strings["my_chat"]["url"]),
         )
         return
 
@@ -156,11 +156,11 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Branch for handling confirmation in auto mode
     if operation == "self-confirm":
-        await context.bot.approve_chat_join_request(
-            chat_id_str, update.callback_query.from_user.id
-        )
-        await context.bot.answer_callback_query(
-            update.callback_query.id, url="https://t.me/PopOS_en"
+        await gather(
+            context.bot.approve_chat_join_request(
+                chat_id_str, update.callback_query.from_user.id
+            ),
+            context.bot.answer_callback_query(update.callback_query.id),
         )
         return
 
