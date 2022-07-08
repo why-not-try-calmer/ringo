@@ -48,27 +48,25 @@ async def setting_route(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id, reply)
 
 
-async def checking_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def checking_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
-    reply = ""
-    settings = await fetch_settings(chat_id)
-    if settings:
-        if "destination" in settings and int(settings["destination"]) == chat_id:
-            reply = strings["checking_routing"]["destination"]
-        else:
-            reply = strings["checking_routing"]["not_destination"]
+    reply = f"This chat's id: {chat_id}"
+    if settings := await fetch_settings(chat_id):
+        if "mode" in settings:
+            reply += f"\nMode: {settings['mode']}"
+        if "destination" in settings:
+            reply += f"\nVerification context: {settings['destination'] if settings['mode'] != 'auto' else 'private chat with the bot (auto)'}."
     else:
-        reply = strings["checking_routing"]["not_routing"]
+        reply += "\n" + strings["settings"]["not_found"]
     await context.bot.send_message(chat_id, reply)
 
 
 @withAuth
-async def resetting_routing(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
-    reply = strings["resetting_routing"]["disabled"]
-    await reset(chat_id)
-    await context.bot.send_message(chat_id, reply)
+    reply = strings["settings"]["reset"]
+    await gather(reset(chat_id), context.bot.send_message(chat_id, reply))
 
 
 @withAuth

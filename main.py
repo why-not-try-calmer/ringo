@@ -29,8 +29,8 @@ def registerHandlers(app: Application):
     acceptReject = CallbackQueryHandler(processing_cbq)
     answerHelp = CommandHandler(["help", "start", "start"], answering_help)
     setRoute = CommandHandler("route", setting_route)
-    checkRouting = CommandHandler("check", checking_routing)
-    resetRouting = CommandHandler("reset", resetting_routing)
+    checkRouting = CommandHandler("check", checking_settings)
+    resetRouting = CommandHandler("reset", resetting)
     setApprovalMode = CommandHandler("mode", setting_mode)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
 

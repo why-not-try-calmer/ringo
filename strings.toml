@@ -17,5 +17,6 @@ destination = "I am already routing requests from a chat to this monitoring chat
 not_destination = "I am already routing join requests to a monitoring chat. Use /route with an optional <chat_id> argument from here to change the destination."
 not_routing = "I am not routing any join requests. Use /route with an optional <chat_id> argument in a chat receiving join requests to add a monitoring chat. Without argument, the monitoring chat = the chat where /route is issued."
 
-[resetting_routing]
-disabled = "All routing from this chat have been disabled. Use /route with an optional <chat_id> argument to start over."
+[settings]
+reset = "All settings reset. Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
+not_found = ""Not settings found! Get started with /mode auto | manual or /route <optional: chat_id>. Call /help if you need."
