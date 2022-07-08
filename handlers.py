@@ -116,7 +116,9 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             user_id,
             strings["wants_to_join"]["agreement"],
-            reply_markup=agree_btn(strings["my_chat"]["url"]),
+            reply_markup=agree_btn(
+                strings["wants_to_join"]["ok"], strings["my_chat"]["url"]
+            ),
         )
         return
 
@@ -157,6 +159,10 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Branch for handling confirmation in auto mode
     if operation == "self-confirm":
         await gather(
+            context.bot.send_message(
+                update.callback_query.message.chat.id,
+                f"Thanks, are welcome to join {strings['my_chat']['url']}",
+            ),
             context.bot.approve_chat_join_request(
                 chat_id_str, update.callback_query.from_user.id
             ),

@@ -32,8 +32,8 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
     )
 
 
-def agree_btn(url: str) -> InlineKeyboardMarkup:
-    button = InlineKeyboardButton(text="I agree, let me in", url=url)
+def agree_btn(text: str, chat_id: int) -> InlineKeyboardMarkup:
+    button = InlineKeyboardButton(text=text, callback_data=f"self-confirm:{chat_id}")
     return InlineKeyboardMarkup([[button]])
 
 
