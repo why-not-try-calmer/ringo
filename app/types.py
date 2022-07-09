@@ -32,13 +32,12 @@ class Settings:
 
         for k, v in settings.items():
             if k in fs:
-                setattr(self, k, v)
+                setattr(self, k, v if isinstance(v, str) else str(v))
 
         if chat_id:
             self.chat_id = chat_id
 
     def __str__(self) -> str:
-        print(vars(self))
         d = asdict(self)
         reducer = (
             lambda acc, item: acc
