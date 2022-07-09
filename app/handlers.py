@@ -94,9 +94,9 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if hasattr(settings, "mode") and settings.mode == "auto":
         await context.bot.send_message(
             user_id,
-            strings["wants_to_join"]["agreement"]
-            if not settings.verification_msg
-            else settings.verification_msg,
+            settings.verification_msg
+            if settings.verification_msg and len(settings.verification_msg) >= 10
+            else strings["wants_to_join"]["verification_msg"],
             reply_markup=agree_btn(
                 strings["wants_to_join"]["ok"],
                 chat_id,

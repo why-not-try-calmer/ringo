@@ -1,4 +1,5 @@
 from app.types import Settings
+from app.handlers import strings
 
 
 def test_settings():
@@ -18,3 +19,7 @@ def test_settings_with_verification_msg():
 def test_settings_pretty_print():
     s = Settings("/set mode auto helper_chat_id 123")
     assert len(s) == 2
+
+
+def test_string():
+    assert len(strings) >= 4
