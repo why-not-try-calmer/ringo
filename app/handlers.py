@@ -4,7 +4,7 @@ from telegram.constants import ParseMode
 from asyncio import gather
 from toml import loads
 
-from app.types import ChatId, Settings
+from app.types import ChatId, Log, Settings
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -12,7 +12,14 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
-from app.db import add_pending, remove_pending, fetch_settings, upsert_settings, reset
+from app.db import (
+    add_pending,
+    log,
+    remove_pending,
+    fetch_settings,
+    upsert_settings,
+    reset,
+)
 
 strings = ""
 with open("strings.toml", "r") as f:
@@ -75,14 +82,26 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Missing settings
     if not settings:
-        return
+        return await context.bot.send_message(chat_id, strings["settings"]["missing"])
+
+    # Mising chat_url
+    if not hasattr(settings, "chat_url"):
+        return await context.bot.send_message(
+            chat_id, strings["settings"]["no_chat_url"]
+        )
 
     # Auto mode
     if hasattr(settings, "mode") and settings.mode == "auto":
         await context.bot.send_message(
             user_id,
-            strings["wants_to_join"]["agreement"],
-            reply_markup=agree_btn(strings["wants_to_join"]["ok"], chat_id),
+            strings["wants_to_join"]["agreement"]
+            if not settings.verification_msg
+            else settings.verification_msg,
+            reply_markup=agree_btn(
+                strings["wants_to_join"]["ok"],
+                chat_id,
+                strings["chat"]["url"] if not settings.chat_url else settings.chat_url,
+            ),
         )
         return
 
@@ -92,7 +111,12 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             destination,
             text,
             parse_mode=ParseMode.MARKDOWN,
-            reply_markup=accept_or_reject_btns(user_id, user_name, chat_id),
+            reply_markup=accept_or_reject_btns(
+                user_id,
+                user_name,
+                chat_id,
+                strings["chat"]["url"] if not settings.chat_url else settings.chat_url,
+            ),
         )
         await add_pending(chat_id, user_id, response.message_id)
 
@@ -102,6 +126,18 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
         await closure_send(chat_id, alert + "\n" + body)
+
+
+async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id, user_name, text = (
+        update.message.from_user.id,
+        update.message.from_user.username or update.message.from_user.first_name,
+        update.message.text,
+    )
+    await gather(
+        log(Log(text, user_id, user_id, user_name)),
+        context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
+    )
 
 
 @withAuth
@@ -119,14 +155,14 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 'Parsing'
     splitted = update.callback_query.data.split(":")
-    operation, chat_id_str = splitted[0], splitted[1]
+    operation, chat_id_str, chat_url = splitted[0], splitted[1], splitted[2]
 
     # Auto mode
     if operation == "self-confirm":
         await gather(
             context.bot.send_message(
                 update.callback_query.from_user.id,
-                f"Thanks, are welcome to join {strings['chat']['url']}",
+                f"Thanks, you are welcome to join {strings['chat']['url']}. (optional) We'd be interested to know how you've heard of this chat, by the way. Simply reply to this message if you'd like to better understand who our users are! :)",
             ),
             context.bot.approve_chat_join_request(
                 chat_id_str, update.callback_query.from_user.id
@@ -137,7 +173,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Manual mode
     # Setting up verdict handling
-    user_id_str, user_name = splitted[2], splitted[3]
+    user_id_str, user_name = splitted[3], splitted[4]
     user_id = int(user_id_str)
     chat_id = int(chat_id_str)
     confirmation_chat_id = update.callback_query.message.chat.id

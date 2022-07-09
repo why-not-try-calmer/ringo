@@ -29,5 +29,9 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     - `chat_url`: the full url (https://t.me/...) of the chat where the bot should listen for join requests (you can and __should__ set this value)
     - `mode <auto | manual>`: see the previous section for explanations
     - `helper_chat_id_`: chat_id of the chat to which the both should forward join requests notifications (only used in __manual__ mode)  
-    - `verification_msg`: the message the bot should send to users trying to verify after landing a join requests 
+    - `verification_msg`: the message the bot should send to users trying to verify after landing a join requests. Naturall it's not convenient to set a long verification message in this way, so for that key it might be preferable to use a line break, as in:
+    ```
+    /set mode auto verification_message
+    Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. 
+    ```
 - `/reset` (no parameter): resets the bot to its default settings relative to chat(s) you manage.
