@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
-from asyncio import gather, create_task
+from asyncio import gather
 from toml import loads
 
 from app.types import ChatId, Log, Settings
