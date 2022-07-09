@@ -8,7 +8,7 @@ agreement = "Hi and welcome. We hope you'll have a great time. Please mind these
 ok = "I agree, let me in"
 
 [commands]
-help = "This bot uses exactly two commands besides `/help` / `/start`: `/set <multiple optional parameters>` and `/reset (no parameter)`. The acceptable parameters for `/set` are available [here](https://github.com/why-not-try-calmer/notify-join#commands)."
+help = "This bot uses exactly two commands besides `/help` and `/start`: \n-`/set <multiple optional parameters>`\n-`/reset (no parameter)`\n\nThe acceptable parameters for `/set` are explained [here](https://github.com/why-not-try-calmer/notify-join#commands)."
 
 [has_joined]
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"

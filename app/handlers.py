@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatType
 from asyncio import gather
 from toml import loads
 
@@ -134,10 +134,14 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update.message.from_user.username or update.message.from_user.first_name,
         update.message.text,
     )
-    await gather(
-        log(Log(text, user_id, user_id, user_name)),
-        context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
-    )
+    if (
+        update.message.reply_to_message.from_user.id == context.bot.id
+        and update.message.reply_to_message.chat.type == ChatType.PRIVATE
+    ):
+        await gather(
+            log(Log(text, user_id, user_id, user_name)),
+            context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
+        )
 
 
 @withAuth
@@ -155,7 +159,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 'Parsing'
     splitted = update.callback_query.data.split(":")
-    operation, chat_id_str, chat_url = splitted[0], splitted[1], splitted[2]
+    operation, chat_id_str = splitted[0], splitted[1]
 
     # Auto mode
     if operation == "self-confirm":
