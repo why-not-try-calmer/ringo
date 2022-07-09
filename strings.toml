@@ -1,12 +1,14 @@
 [chat]
+# This can be overriden by way of a setting
 url = "https://t.me/PopOs_en"
 
 [wants_to_join]
+# This can be overriden by way of a setting
 agreement = "Hi and welcome. We hope you'll have a great time. Please mind these 3 rules:\n1) Be respectful: address people as you would address them in a non-digital setting.\n2) Do your research: before asking questions, search this chat for answers, as well as https://support.system76.com/, https://www.reddit.com/r/pop_os/ and your favorite web engine.\n3) Be relevant: this chat is primarily about Pop!_OS, one of the few distributions that really cares about your hardware, user experience and productivity. We tolerate broader themes in the range of Linux, software and computers, but please try to minimize offtopic adventures.\nFinally, notice that the chat is bridged to Matrix (another messaging service). \n\nNow use the button below to confirm you agree!"
 ok = "I agree, let me in"
 
 [commands]
-help = "DISCLAIMER: I have written this bot literally yesterday. It is not yet able to handle chats beside's THE ONE it was originally made for. Commands & source code available [here](https://github.com/why-not-try-calmer/notify-join)."
+help = "This bot uses exactly two commands besides `/help` / `/start`: `/set <multiple optional parameters>` and `/reset (no parameter)`. The acceptable parameters for `/set` are available [here](https://github.com/why-not-try-calmer/notify-join#commands)."
 
 [has_joined]
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
@@ -15,7 +17,9 @@ not_destination = "Thanks for adding me to this group chat. If that's not done a
 [settings]
 settings = "You settings read:\n"
 updated = "Thanks, your new settings read:\n" 
-failed_to_parse = "Unable to parse! You need to pass pairs of key-values separated by spaces, as in:\n `key1 val1 key2 val2`... The list of keys is available [here](https://github.com/why-not-try-calmer/notify-join)."
+failed_to_parse = "Unable to parse! You need to pass pairs of key-values separated by spaces, as in:\n `key1 val1 key2 val2`... The list of keys is available [here](https://github.com/why-not-try-calmer/notify-join#commands)."
 failed_to_update = "Unable to update! There might be an issue with the database."
 reset = "All settings reset. Get started with `/set mode auto`. Call `/help` if you need."
 none_found = "Not settings found! Get started with `/set mode auto` or `/set mode manual helper_chat_id <chat_id here>`. Call /help if you need."
+missing = "Unable to find your settings. Please contact an administrator."
+no_chat_url = "Missing 'chat_url'! I need it to direct verified users."

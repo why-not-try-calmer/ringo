@@ -20,19 +20,23 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
     )
 
 
-def agree_btn(text: str, chat_id: ChatId) -> InlineKeyboardMarkup:
-    button = InlineKeyboardButton(text=text, callback_data=f"self-confirm:{chat_id}")
+def agree_btn(text: str, chat_id: ChatId, chat_url: str) -> InlineKeyboardMarkup:
+    button = InlineKeyboardButton(
+        text=text, callback_data=f"self-confirm:{chat_id}:{chat_url}"
+    )
     return InlineKeyboardMarkup([[button]])
 
 
 def accept_or_reject_btns(
-    user_id: UserId, user_name: str, chat_id: ChatId
+    user_id: UserId, user_name: str, chat_id: ChatId, chat_url: str
 ) -> InlineKeyboardMarkup:
     accept = InlineKeyboardButton(
-        text="Accept", callback_data=f"accept:{chat_id}:{user_id}:{user_name}"
+        text="Accept",
+        callback_data=f"accept:{chat_id}:{chat_url}:{user_id}:{user_name}",
     )
     reject = InlineKeyboardButton(
-        text="Reject", callback_data=f"reject:{chat_id}:{user_id}:{user_name}"
+        text="Reject",
+        callback_data=f"reject:{chat_id}:{chat_url}:{user_id}:{user_name}",
     )
     keyboard = InlineKeyboardMarkup([[accept, reject]])
     return keyboard

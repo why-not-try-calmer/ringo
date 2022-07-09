@@ -17,6 +17,7 @@ logging.basicConfig(
 warnings.filterwarnings("error", category=PTBUserWarning)
 
 from app.handlers import (
+    replying_to_bot,
     wants_to_join,
     processing_cbq,
     answering_help,
@@ -29,20 +30,14 @@ from app.handlers import (
 def registerHandlers(app: Application):
     joinReqHandler = ChatJoinRequestHandler(wants_to_join)
     acceptReject = CallbackQueryHandler(processing_cbq)
-    answerHelp = CommandHandler(["help", "start", "start"], answering_help)
+    answerHelp = CommandHandler(["help", "start"], answering_help)
     setBot = CommandHandler("set", setting_bot)
     reset = CommandHandler("reset", resetting)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
+    replyToBot = MessageHandler(filters.REPLY, replying_to_bot)
 
     app.add_handlers(
-        [
-            joinReqHandler,
-            newMember,
-            acceptReject,
-            answerHelp,
-            setBot,
-            reset,
-        ]
+        [joinReqHandler, newMember, acceptReject, answerHelp, setBot, reset, replyToBot]
     )
     print("Handlers successfully registered")
 
