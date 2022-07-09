@@ -4,7 +4,11 @@
 
 This bot provides a simple click-based verification workflow for your Telegram users. It requires that you have enabled the options `Only members can send messages` as well as `Use chat join requests`; only the latter is strictly necessary but goes hand in hand with the former. 
 
-You can see the bot in action [here](https://t.me/PopOS_en).
+You can see [the bot](https://t.me/alert_me_and_my_chat_bot) in action [here](https://t.me/PopOS_en).
+
+If you like the bot, feel free to use it in your own chats, fork this repository or even pay a coffee or a beer to the developer. At any rate please mind the LICENSE. 
+
+## How it works
 
 There are two modes of operation:
 
