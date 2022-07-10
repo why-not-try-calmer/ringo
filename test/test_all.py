@@ -1,5 +1,6 @@
-from app.types import Settings
-from app.handlers import strings
+from dataclasses import asdict
+from toml import loads
+from app.types import Log, Settings
 
 
 def test_settings():
@@ -22,4 +23,14 @@ def test_settings_pretty_print():
 
 
 def test_string():
-    assert len(strings) >= 4
+    strings = ""
+    with open("strings.toml", "r") as f:
+        r = f.read()
+        strings = loads(r)
+        assert len(strings) >= 4
+
+
+def test_log():
+    l = Log("1234", 1, 1, "my_name")
+    d = asdict(l)
+    assert len(d) == 5

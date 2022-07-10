@@ -61,7 +61,7 @@ class Settings:
         reducer = (
             lambda acc, item: acc
             + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
-            if item[1]
+            if item[1] and item[1] != "None"
             else acc
         )
         return reduce(reducer, d.items(), "")
@@ -70,6 +70,7 @@ class Settings:
         return len(vars(self))
 
 
+@dataclass
 class Log:
     text: str
     chat_id: ChatId
@@ -83,6 +84,3 @@ class Log:
         self.user_id = user_id
         self.username = username
         self.at = datetime.now()
-
-    def __dict__(self) -> dict:
-        return vars(self)
