@@ -45,13 +45,13 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(s) == 1 or s[1] == "":
         # Get
         if fetched := await fetch_settings(chat_id):
-            reply = strings["settings"]["settings"] + str(fetched)
+            reply = strings["settings"]["settings"] + fetched.render(with_alert=True)
         else:
             reply = strings["settings"]["none_found"]
     elif settings := Settings(received, chat_id):
         # Set
         if updated := await upsert_settings(settings):
-            reply = strings["settings"]["updated"] + str(updated)
+            reply = strings["settings"]["updated"] + updated.render(with_alert=True)
         else:
             reply = strings["settings"]["failed_to_update"]
     else:

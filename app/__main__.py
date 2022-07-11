@@ -69,7 +69,7 @@ if __name__ == "__main__":
         )
     else:
         print(
-            "Running without self-signed SSL certificate; your HTTPS requests will need to be decoded and encoded by the hosting!"
+            "Running without self-signed SSL certificate; your HTTPS requests will need to be decoded and encoded by the server!"
         )
         app.run_webhook(
             listen="0.0.0.0",

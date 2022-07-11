@@ -18,6 +18,7 @@ logs: AsyncIOMotorCollection = db["logs"]
 
 async def fetch_settings(chat_id: ChatId) -> Settings | None:
     if doc := await chats.find_one({"chat_id": chat_id}):
+        print("Found settings: ", Settings(doc).as_dict_no_none())
         return Settings(doc)
 
 
@@ -26,12 +27,10 @@ async def reset(chat_id: ChatId):
 
 
 async def upsert_settings(settings: Settings) -> Settings | None:
-    if not hasattr(settings, "chat_id"):
-        return None
-
+    print("Trying to update: ", settings.as_dict_no_none())
     if updated := await chats.find_one_and_update(
         {"chat_id": settings.chat_id},
-        {"$set": asdict(settings)},
+        {"$set": settings.as_dict_no_none()},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     ):

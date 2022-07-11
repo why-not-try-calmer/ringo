@@ -30,8 +30,8 @@ uk = "Ласкаво просимо"
 zn = "歡迎"
 
 [settings]
-settings = "You settings read:\n"
-updated = "Thanks, your new settings read:\n" 
+settings = "Your settings read:\n"
+updated = "Thanks, your new settings read:\n---\n" 
 failed_to_parse = "Unable to parse! You need to pass pairs of key-values separated by spaces, as in:\n `key1 val1 key2 val2`... The list of keys is available [here](https://github.com/why-not-try-calmer/notify-join#commands)."
 failed_to_update = "Unable to update! There might be an issue with the database."
 reset = "All settings reset. Get started with `/set mode auto`. Call `/help` if you need."

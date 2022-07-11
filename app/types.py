@@ -59,20 +59,31 @@ class Settings:
     def as_dict_no_none(self) -> dict:
         return {k: v for k, v in asdict(self).items() if v and v is not None}
 
-    def __str__(self) -> str:
-        d = self.as_dict_no_none()
+    def render(self, with_alert: bool) -> str:
+        if with_alert:
+            d = asdict(self)
 
-        def reducer(acc, item) -> str:
-            if item[0] in ["chat_url", "verification_msg"]:
-                return (
-                    acc
-                    + "\n"
-                    + b"\xE2\x9A\xA0".decode("utf-8")
-                    + f"Missing an important value here ({escape_markdown(item[0])})! The bot won't be able to operate properly without it!"
-                )
-            return acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
+            def reducer(acc, item) -> str:
+                if item[0] in ["chat_url", "verification_msg"] and (
+                    not item[1] or item[1] == "None"
+                ):
+                    return (
+                        acc
+                        + "\n"
+                        + b"\xE2\x9A\xA0".decode("utf-8")
+                        + f"Missing an important value here ({escape_markdown(item[0])})! The bot won't be able to operate properly without it!\n\n"
+                    )
+                return acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
 
-        return reduce(reducer, d.items(), "")
+            return reduce(reducer, d.items(), "")
+
+        else:
+            d = self.as_dict_no_none()
+            reducer = (
+                lambda acc, item: acc
+                + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
+            )
+            return reduce(reducer, d.items(), "")
 
     def __len__(self) -> int:
         return len(vars(self))
