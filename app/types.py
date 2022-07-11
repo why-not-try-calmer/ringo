@@ -28,7 +28,7 @@ class Settings:
 
             # Handling the special case of 'verification_msg' first
             if "verification_msg" in settings:
-                _settings, msg = settings.split("\n")
+                _settings, msg = settings.split("\n", maxsplit=1)
                 settings_list = list(
                     filter(lambda w: w != "verification_msg", _settings.split(" "))
                 )
@@ -58,12 +58,23 @@ class Settings:
 
     def __str__(self) -> str:
         d = asdict(self)
-        reducer = (
-            lambda acc, item: acc
-            + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
-            if item[1] and item[1] != "None"
-            else acc
-        )
+
+        def reducer(acc, item) -> str:
+            if item[0] in ["chat_url", "verification_msg"] and (
+                not item[1] or item[1] == "None"
+            ):
+                return (
+                    acc
+                    + "\n"
+                    + b"\xE2\x9A\xA0".decode("utf-8")
+                    + f"Missing an important value here ({item[0]})! The bot won't be able to operate properly without it!"
+                )
+            return (
+                acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
+                if not item[1] is None
+                else acc
+            )
+
         return reduce(reducer, d.items(), "")
 
     def __len__(self) -> int:

@@ -23,7 +23,6 @@ def test_settings_pretty_print():
 
 
 def test_string():
-    strings = ""
     with open("strings.toml", "r") as f:
         r = f.read()
         strings = loads(r)
