@@ -65,6 +65,10 @@ def withAuth(f: Callable):
         if user_id in [admin.user.id for admin in admins]:
             return await f(*args, **kwargs)
         else:
-            await context.bot.send_message(chat_id, "Only admins can use this command!")
+            await context.bot.send_message(
+                chat_id,
+                "Only admins can use this command!",
+                disable_web_page_preview=True,
+            )
 
     return inner

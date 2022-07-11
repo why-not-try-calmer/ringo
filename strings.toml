@@ -15,15 +15,18 @@ destination = "Thanks for adding me to this monitoring chat. If that's not done 
 not_destination = "Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
 
 [welcome]
+ben = "স্বাগত"
 de = "Wilkommen"
 en = "welcome"
 es = "bienvenidos/bienvenidas"
 fr = "bienvenue"
+hi = "स्वागत"
 it = "benarrivata/benarrivato"
 ja = "いらっしゃいませ"
 pl = "powitanie"
 pt = "bem-vindo"
 ru = "Добро пожаловать"
+uk = "Ласкаво просимо"
 zn = "歡迎"
 
 [settings]

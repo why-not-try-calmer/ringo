@@ -30,7 +30,10 @@ class Settings:
             if "verification_msg" in settings:
                 _settings, msg = settings.split("\n", maxsplit=1)
                 settings_list = list(
-                    filter(lambda w: w != "verification_msg", _settings.split(" "))
+                    filter(
+                        lambda w: not w in ["verification_msg", "/set"],
+                        _settings.split(" "),
+                    )
                 )
                 verification_msg = msg
 
@@ -39,9 +42,6 @@ class Settings:
             # Ensuring list into dict
             if len(s) == 1 or not s[1]:
                 return
-
-            if len(s) % 2 != 0:
-                s = s[1:]
 
             # Ensuring dict
             settings = dict(pairwise(s))
@@ -56,24 +56,21 @@ class Settings:
         if chat_id:
             self.chat_id = chat_id
 
+    def as_dict_no_none(self) -> dict:
+        return {k: v for k, v in asdict(self).items() if v and v is not None}
+
     def __str__(self) -> str:
-        d = asdict(self)
+        d = self.as_dict_no_none()
 
         def reducer(acc, item) -> str:
-            if item[0] in ["chat_url", "verification_msg"] and (
-                not item[1] or item[1] == "None"
-            ):
+            if item[0] in ["chat_url", "verification_msg"]:
                 return (
                     acc
                     + "\n"
                     + b"\xE2\x9A\xA0".decode("utf-8")
-                    + f"Missing an important value here ({item[0]})! The bot won't be able to operate properly without it!"
+                    + f"Missing an important value here ({escape_markdown(item[0])})! The bot won't be able to operate properly without it!"
                 )
-            return (
-                acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
-                if not item[1] is None
-                else acc
-            )
+            return acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
 
         return reduce(reducer, d.items(), "")
 
