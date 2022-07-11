@@ -47,6 +47,11 @@ if __name__ == "__main__":
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
 
+    from asyncio import set_event_loop_policy
+    from uvloop import EventLoopPolicy
+
+    set_event_loop_policy(EventLoopPolicy())
+
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
     print(f"Setting webhook now. Listening to {PORT} and ready to work.")

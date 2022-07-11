@@ -28,3 +28,4 @@ tomli==2.0.1
 tornado==6.2
 tzdata==2022.1
 tzlocal==4.2
+uvloop==0.16.0
