@@ -68,6 +68,9 @@ if __name__ == "__main__":
             cert="cert.pem",
         )
     else:
+        print(
+            "Running without self-signed SSL certificate; your HTTPS requests will need to be decoded and encoded by the hosting!"
+        )
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
