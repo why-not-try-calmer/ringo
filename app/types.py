@@ -1,93 +1,99 @@
-from dataclasses import asdict, dataclass, fields
-from datetime import datetime
+from datetime import date, datetime
 from itertools import pairwise
 from functools import reduce
-from sqlite3 import Date
-from typing import TypeAlias
+from typing import Optional, TypeAlias
 from telegram.helpers import escape_markdown
 
 ChatId: TypeAlias = int | str
 UserId: TypeAlias = int | str
-MessageId = TypeAlias = int | str
+MessageId: TypeAlias = int | str
 
 
-@dataclass
-class Settings:
-    chat_id: ChatId | None = None
-    chat_url: str | None = None
-    mode: str | None = None
-    helper_chat_id: ChatId | None = None
-    verification_msg: str | None = None
+class AsDict:
+    def as_dict(self) -> dict:
+        return vars(self)
 
-    def __init__(self, settings: dict | str, chat_id: ChatId | None = None):
-        fs = {f.name for f in fields(Settings)}
-        verification_msg = ""
+
+class Settings(AsDict):
+    chat_id: Optional[ChatId] = None
+    chat_url: Optional[str] = None
+    mode: Optional[str] = None
+    helper_chat_id: Optional[ChatId] = None
+    verification_msg: Optional[str] = None
+    changelog: Optional[str] = None
+    active: Optional[str] = None
+
+    def __init__(self, settings: dict | str, chat_id: Optional[int | str] = None):
+        clean_string_array = []
 
         if isinstance(settings, str):
-            settings_list = []
+            line_broken = settings.split("\n", maxsplit=1)
 
-            # Handling the special case of 'verification_msg' first
-            if "verification_msg" in settings:
-                _settings, msg = settings.split("\n", maxsplit=1)
-                settings_list = list(
-                    filter(lambda w: w != "verification_msg", _settings.split(" "))
-                )
-                verification_msg = msg
+            if len(line_broken) == 2:
+                clean_string_array = line_broken[0].split(" ")[1:] + [line_broken[1]]
+            else:
+                clean_string_array = line_broken[0].split(" ")[1:]
 
-            s = settings_list or settings.split(" ")
+        d = (
+            settings
+            if isinstance(settings, dict)
+            else dict(pairwise(clean_string_array))
+        )
 
-            # Ensuring list into dict
-            if len(s) == 1 or not s[1]:
-                return
-
-            if len(s) % 2 != 0:
-                s = s[1:]
-
-            # Ensuring dict
-            settings = dict(pairwise(s))
-
-        for k, v in settings.items():
-            if k in fs:
+        for k, v in d.items():
+            if k in {
+                "helper_chat_id",
+                "chat_id",
+                "chat_url",
+                "verification_msg",
+                "mode",
+                "changelog",
+                "active",
+            } and not (v == "None" or v is None):
                 setattr(self, k, v if isinstance(v, str) else str(v))
-
-        if verification_msg:
-            self.verification_msg = verification_msg
 
         if chat_id:
             self.chat_id = chat_id
 
-    def __str__(self) -> str:
-        d = asdict(self)
+    def render(self, with_alert: bool) -> str:
+        d = self.as_dict()
 
-        def reducer(acc, item) -> str:
-            if item[0] in ["chat_url", "verification_msg"] and (
-                not item[1] or item[1] == "None"
-            ):
-                return (
-                    acc
-                    + "\n"
-                    + b"\xE2\x9A\xA0".decode("utf-8")
-                    + f"Missing an important value here ({item[0]})! The bot won't be able to operate properly without it!"
+        if with_alert:
+
+            def reducer(acc, item) -> str:
+                k, v = (
+                    item[0],
+                    str(item[1]) if not isinstance(item[1], str) else item[1],
                 )
-            return (
-                acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
-                if not item[1] is None
-                else acc
-            )
 
-        return reduce(reducer, d.items(), "")
+                if k in ["chat_url", "verification_msg"] and (not v or v == "None"):
+                    return (
+                        acc
+                        + "\n"
+                        + b"\xE2\x9A\xA0".decode("utf-8")
+                        + f"Missing an important value here ({escape_markdown(k)})! The bot won't be able to operate properly without it!\n\n"
+                    )
+                return acc + f"{escape_markdown(k)}: {escape_markdown(v)}\n"
+
+            return reduce(reducer, d.items(), "")
+
+        else:
+            reducer = (
+                lambda acc, item: acc
+                + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
+            )
+            return reduce(reducer, d.items(), "")
 
     def __len__(self) -> int:
-        return len(vars(self))
+        return len(self.as_dict())
 
 
-@dataclass
-class Log:
+class Log(AsDict):
     text: str
     chat_id: ChatId
     user_id: UserId
     username: str
-    at: Date
+    at: date
 
     def __init__(self, text: str, chat_id: ChatId, user_id: UserId, username: str):
         self.text = text

@@ -3,18 +3,22 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import gather
 from toml import loads
+from os import environ
 
 from app.types import ChatId, Log, Settings
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
+    mark_excepted_coroutines,
     mention_markdown,
     withAuth,
 )
 from app.db import (
     add_pending,
+    fetch_chat_ids,
     log,
+    remove_chats,
     remove_pending,
     fetch_settings,
     upsert_settings,
@@ -30,7 +34,9 @@ with open("strings.toml", "r") as f:
 async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     reply = strings["commands"]["help"]
-    await context.bot.send_message(chat_id, reply, parse_mode=ParseMode.MARKDOWN)
+    await context.bot.send_message(
+        chat_id, reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+    )
 
 
 @withAuth
@@ -40,22 +46,24 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     s = received.split(" ")
     reply = ""
 
-    if len(s) == 1 or not s[1]:
+    if len(s) == 1 or s[1] == "":
         # Get
         if fetched := await fetch_settings(chat_id):
-            reply = strings["settings"]["settings"] + str(fetched)
+            reply = strings["settings"]["settings"] + fetched.render(with_alert=True)
         else:
             reply = strings["settings"]["none_found"]
     elif settings := Settings(received, chat_id):
         # Set
         if updated := await upsert_settings(settings):
-            reply = strings["settings"]["updated"] + str(updated)
+            reply = strings["settings"]["updated"] + updated.render(with_alert=True)
         else:
             reply = strings["settings"]["failed_to_update"]
     else:
         # No parse
         reply = strings["settings"]["failed_to_parse"]
-    await context.bot.send_message(chat_id, reply, parse_mode=ParseMode.MARKDOWN)
+    await context.bot.send_message(
+        chat_id, reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+    )
 
 
 @withAuth
@@ -63,7 +71,10 @@ async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
     reply = strings["settings"]["reset"]
-    await gather(reset(chat_id), context.bot.send_message(chat_id, reply))
+    await gather(
+        reset(chat_id),
+        context.bot.send_message(chat_id, reply, disable_web_page_preview=True),
+    )
 
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,13 +93,13 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Missing settings
     if not settings:
-        return await context.bot.send_message(chat_id, strings["settings"]["missing"])
-
-    # Mising chat_url
-    if not hasattr(settings, "chat_url"):
         return await context.bot.send_message(
-            chat_id, strings["settings"]["no_chat_url"]
+            chat_id, strings["settings"]["missing"], disable_web_page_preview=True
         )
+
+    # Inactive
+    if hasattr(settings, "active") and settings.active == "off":
+        return
 
     # Auto mode
     if hasattr(settings, "mode") and settings.mode == "auto":
@@ -97,6 +108,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             settings.verification_msg
             if settings.verification_msg and len(settings.verification_msg) >= 10
             else strings["wants_to_join"]["verification_msg"],
+            disable_web_page_preview=True,
             reply_markup=agree_btn(
                 strings["wants_to_join"]["ok"],
                 chat_id,
@@ -111,6 +123,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             destination,
             text,
             parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True,
             reply_markup=accept_or_reject_btns(
                 user_id,
                 user_name,
@@ -132,7 +145,7 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not hasattr(update, "message"):
         print(f"Unable to make use of this reply: {update.message}")
         return
-        
+
     user_id, user_name, text = (
         update.message.from_user.id,
         update.message.from_user.username or update.message.from_user.first_name,
@@ -157,20 +170,22 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot.send_message(
                 update.callback_query.message.chat.id,
                 "Wrong 'data' payload, unable to process.",
+                disable_web_page_preview=True,
             ),
         )
         return
 
     # 'Parsing'
-    splitted = update.callback_query.data.split(":")
-    operation, chat_id_str = splitted[0], splitted[1]
+    splitted = update.callback_query.data.split("§")
+    operation, chat_id_str, chat_url = splitted[0], splitted[1], splitted[2]
 
     # Auto mode
     if operation == "self-confirm":
         await gather(
             context.bot.send_message(
                 update.callback_query.from_user.id,
-                f"Thanks, you are welcome to join {strings['chat']['url']}. (optional) We'd be interested to know how you've heard of this chat, by the way. Simply reply to this message if you'd like to better understand who our users are! :)",
+                f"Thanks, you are welcome to join {chat_url}. (optional) We'd be interested to know how you've heard of this chat, by the way. Simply reply to this message if you'd like to better understand who our users are! :)",
+                disable_web_page_preview=True,
             ),
             context.bot.approve_chat_join_request(
                 chat_id_str, update.callback_query.from_user.id
@@ -215,7 +230,10 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.delete_message(confirmation_chat_id, message_id)
 
     await gather(
-        context.bot.send_message(confirmation_chat_id, reply), closure_together()
+        context.bot.send_message(
+            confirmation_chat_id, reply, disable_web_page_preview=True
+        ),
+        closure_together(),
     )
 
 
@@ -240,14 +258,48 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 report = strings["has_joined"]["not_destination"]
             if settings.helper_chat_id:
-                await context.bot.send_message(settings.helper_chat_id, report)
+                await context.bot.send_message(
+                    settings.helper_chat_id, report, disable_web_page_preview=True
+                )
     else:
-        # Genuinely a new user
-        greetings = ", ".join(
-            [mention_markdown(uid, name) for uid, name, _ in new_members]
+        # Genuinely new users
+        greet = (
+            lambda lang: "welcome"
+            if not lang in strings["welcome"]
+            else strings["welcome"][lang]
         )
-        welcome_key = new_members[0][2]
-        welcome = "welcome" if not welcome_key in strings['welcome'] else strings['welcome'][welcome_key]
+        greetings = (
+            ", ".join(
+                [
+                    f"{greet(lang)} {mention_markdown(uid, name)}"
+                    for uid, name, lang in new_members
+                ]
+            )
+            + "!"
+        )
         await context.bot.send_message(
-            chat_id, f"Hi there {greetings}, {welcome}!", parse_mode=ParseMode.MARKDOWN
+            chat_id,
+            greetings.capitalize(),
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True,
         )
+
+
+async def admin_op(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id, admin_id = update.message.chat.id, update.message.from_user.id
+
+    if environ["ADMIN"] != str(admin_id):
+        return await context.bot.send_message(chat_id, strings["admin"]["error"])
+
+    # Get all chats_ids
+    _, msg = update.message.text.split(" ", maxsplit=1)
+    chat_ids = await fetch_chat_ids()
+
+    # Broadcast, removing chats_ids that didn't accept the message
+    failures = await gather(
+        *[
+            mark_excepted_coroutines(cid, context.bot.send_message(cid, msg))
+            for cid in chat_ids
+        ]
+    )
+    await remove_chats([f for f in failures if f is not None])

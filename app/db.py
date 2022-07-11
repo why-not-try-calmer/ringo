@@ -22,26 +22,36 @@ async def fetch_settings(chat_id: ChatId) -> Settings | None:
 
 
 async def reset(chat_id: ChatId):
-    await chats.delete_one({"chat_id": chat_id})
+    return await chats.delete_one({"chat_id": chat_id})
 
 
 async def upsert_settings(settings: Settings) -> Settings | None:
-    if not hasattr(settings, "chat_id"):
-        return None
-
     if updated := await chats.find_one_and_update(
         {"chat_id": settings.chat_id},
-        {"$set": asdict(settings)},
+        {"$set": settings.as_dict()},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     ):
         return Settings(updated)
 
 
+async def fetch_chat_ids() -> list[ChatId]:
+    cursor = chats.find()
+    users_id = []
+    for doc in await cursor.to_list(length=None):
+        if "chat_id" in doc and ("changelog" not in doc or doc["changelog"] != "off"):
+            users_id.append(doc["chat_id"])
+    return users_id
+
+
+async def remove_chats(chats_ids: list[ChatId]):
+    return await chats.delete_many({"chat_id": {"$in": chats_ids}})
+
+
 async def add_pending(chat_id: ChatId, user_id: UserId, message_id: MessageId):
     user_key = f"pending_{user_id}"
     payload = {"message_id": message_id, "at": datetime.now()}
-    await chats.find_one_and_update(
+    return await chats.find_one_and_update(
         {"chat_id": chat_id},
         {"$set": {user_key: payload}},
         upsert=True,
@@ -56,4 +66,4 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 
 
 async def log(contents: Log):
-    await logs.insert(asdict(contents))
+    return await logs.insert(asdict(contents))

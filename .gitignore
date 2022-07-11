@@ -3,3 +3,4 @@ Pipfile
 Pipfile.lock
 *pycache*
 .pytest_cache/
+.vscode/
