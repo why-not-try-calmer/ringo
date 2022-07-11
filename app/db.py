@@ -5,6 +5,7 @@ from motor.motor_asyncio import (
     AsyncIOMotorDatabase,
 )
 from pymongo.collection import ReturnDocument
+from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from os import environ
 from datetime import datetime
 
@@ -15,33 +16,50 @@ db: AsyncIOMotorDatabase = client["alert-me"]
 chats: AsyncIOMotorCollection = db["chats"]
 logs: AsyncIOMotorCollection = db["logs"]
 
+""" Settings """
+
 
 async def fetch_settings(chat_id: ChatId) -> Settings | None:
     if doc := await chats.find_one({"chat_id": chat_id}):
         return Settings(doc)
 
 
-async def reset(chat_id: ChatId):
-    await chats.delete_one({"chat_id": chat_id})
+async def reset(chat_id: ChatId) -> DeleteResult:
+    return await chats.delete_one({"chat_id": chat_id})
 
 
 async def upsert_settings(settings: Settings) -> Settings | None:
-    if not hasattr(settings, "chat_id"):
-        return None
-
     if updated := await chats.find_one_and_update(
         {"chat_id": settings.chat_id},
-        {"$set": asdict(settings)},
+        {"$set": settings.as_dict()},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     ):
         return Settings(updated)
 
 
-async def add_pending(chat_id: ChatId, user_id: UserId, message_id: MessageId):
+""" Chats """
+
+
+async def fetch_chat_ids() -> list[ChatId]:
+    cursor = chats.find()
+    users_id = []
+    for doc in await cursor.to_list(length=None):
+        if "chat_id" in doc and ("changelog" not in doc or doc["changelog"] != "off"):
+            users_id.append(doc["chat_id"])
+    return users_id
+
+
+async def remove_chats(chats_ids: list[ChatId]) -> DeleteResult:
+    return await chats.delete_many({"chat_id": {"$in": chats_ids}})
+
+
+async def add_pending(
+    chat_id: ChatId, user_id: UserId, message_id: MessageId
+) -> UpdateResult:
     user_key = f"pending_{user_id}"
     payload = {"message_id": message_id, "at": datetime.now()}
-    await chats.find_one_and_update(
+    return await chats.find_one_and_update(
         {"chat_id": chat_id},
         {"$set": {user_key: payload}},
         upsert=True,
@@ -55,5 +73,8 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
     return doc[f"pending_{user_id}"]["message_id"]
 
 
-async def log(contents: Log):
-    await logs.insert(asdict(contents))
+""" Logs """
+
+
+async def log(contents: Log) -> InsertOneResult:
+    return await logs.insert_one(asdict(contents))

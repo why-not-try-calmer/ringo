@@ -1,4 +1,4 @@
-[![Tests](https://github.com/why-not-try-calmer/notify-join/actions/workflows/python-app.yml/badge.svg)](https://github.com/why-not-try-calmer/notify-join/actions/workflows/python-app.yml)
+[![Tests](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml/badge.svg)](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml)
 
 ## Overview
 
@@ -34,23 +34,31 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     /set mode auto verification_message
     Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. 
     ```
+    - `active <on | off>`: _off_ pauses the bot for this chat, _on_ makes it active
+    - `changelog < on | off>`: _off_ lets you opt-out of changelog notification messages
 - `/reset` (no parameter): resets the bot to its default settings relative to chat(s) you manage.
+
+## Tests
+
+Run test with `python -m pytest -s --asyncio-mode=strict`
 
 ## Deploy
 
 Since I don't plan on investing heavy resources on deployment it's better if users deploy their own copy of this bot. The easiest way is to use Docker / Podman. Create a new directoy, cd to it and then:
 
-1. Clone this repository: `git clone https://github.com/why-not-try-calmer/notify-join.git .`
+1. Clone this repository: `git clone https://github.com/why-not-try-calmer/ringo.git .`
 2. Cd to it and there create your own SSL certificate (for encoding/decoding HTTPS requests to/from Telegram): `openssl req -newkey rsa:2048 -sha256 -nodes -keyout private.key -x509 -days 3650 -out cert.pem`. Follow the interactive instructions.
 3. Build the image: `docker build . -t ringo` (use `docker` if you are able to use `podman`)
 4. Deploy: `docker run -p <HOST_PORT>:8443 --env-file .env localhost/ringo`
 
 The last command assumes that you are using an .env file to pass secrets to the bot. This is required if you don't set ENVARs containing the needed secret by some other means. The bot expects the following ENVARs (random examples):
 
-- TOKEN=123344:DFKDFK54KFKkdslkelg1
-- ENDPOINT=https://some.ur.l
-- MONGO_CONN_STRING=mongodb+srv://myapp:mypass@myhost/?retryWrites=true&w=majority
-
+```
+ADMIN=userid_of_admin           <-- the chat the operator is going to use to administrate the bot
+ENDPOINT=https://some.ur.l      <-- the webhook's url
+MONGO_CONN_STRING=mongodb+srv://myapp:mypass@myhost/?retryWrites=true&w=majority  <-- the Mongo db connection string
+TOKEN=123344:DFKDFK54KFKkdslkelg1       <-- the Telegram token
+```
 Notice that Telegram as per their [official documentation](https://core.telegram.org/bots/api#setwebhook) requires you to use any of 443, 80, 88 or 8443 as your HOST_PORT.
 
 If you want to have the bot listen to a custom port, there is the option to add a `PORT` envar. Then command (4) above will read instead:

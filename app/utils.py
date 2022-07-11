@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable, Coroutine
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -22,7 +22,7 @@ def admins_ids_mkup(admins: list[ChatMember]) -> str:
 
 def agree_btn(text: str, chat_id: ChatId, chat_url: str) -> InlineKeyboardMarkup:
     button = InlineKeyboardButton(
-        text=text, callback_data=f"self-confirm:{chat_id}:{chat_url}"
+        text=text, callback_data=f"self-confirm§{chat_id}§{chat_url}"
     )
     return InlineKeyboardMarkup([[button]])
 
@@ -32,11 +32,11 @@ def accept_or_reject_btns(
 ) -> InlineKeyboardMarkup:
     accept = InlineKeyboardButton(
         text="Accept",
-        callback_data=f"accept:{chat_id}:{chat_url}:{user_id}:{user_name}",
+        callback_data=f"accept§{chat_id}§{chat_url}§{user_id}§{user_name}",
     )
     reject = InlineKeyboardButton(
         text="Reject",
-        callback_data=f"reject:{chat_id}:{chat_url}:{user_id}:{user_name}",
+        callback_data=f"reject§{chat_id}§{chat_url}§{user_id}§{user_name}",
     )
     keyboard = InlineKeyboardMarkup([[accept, reject]])
     return keyboard
@@ -65,6 +65,17 @@ def withAuth(f: Callable):
         if user_id in [admin.user.id for admin in admins]:
             return await f(*args, **kwargs)
         else:
-            await context.bot.send_message(chat_id, "Only admins can use this command!")
+            await context.bot.send_message(
+                chat_id,
+                "Only admins can use this command!",
+                disable_web_page_preview=True,
+            )
 
     return inner
+
+
+async def mark_excepted_coroutines(marker: Any, coroutine: Coroutine) -> Any | None:
+    try:
+        await coroutine
+    except Exception:
+        return marker
