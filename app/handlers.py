@@ -129,6 +129,10 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not hasattr(update, "message"):
+        print(f"Unable to make use of this reply: {update.message}")
+        return
+        
     user_id, user_name, text = (
         update.message.from_user.id,
         update.message.from_user.username or update.message.from_user.first_name,
