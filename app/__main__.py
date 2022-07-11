@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
-    print("Setting webhook now. Ready to work.")
+    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
 
     app.run_webhook(
         listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=f"{ENDPOINT}/{TOKEN}"

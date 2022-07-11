@@ -35,3 +35,24 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. 
     ```
 - `/reset` (no parameter): resets the bot to its default settings relative to chat(s) you manage.
+
+## Deploy
+
+Since I don't plan on investing heavy resources on deployment it's better if users deploy their own copy of this bot. The easiest way is to use Docker / Podman. Create a new directoy, cd to it and then:
+
+1. Clone this repository: `git clone https://github.com/why-not-try-calmer/notify-join.git .`
+2. Build the image: `docker build . -t ringo` (use `docker` if you are able to use `podman`)
+3. Deploy: `docker run -p <HOST_PORT>:8443 --env-file .env localhost/ringo`
+
+The last command assumes that you are using an .env file to pass secrets to the bot. This is required if you don't set ENVARs containing the needed secret by some other means. The bot expects the following ENVARs (random examples):
+
+- TOKEN=123344:DFKDFK54KFKkdslkelg1
+- ENDPOINT=https://some.ur.l
+- MONGO_CONN_STRING=mongodb+srv://myapp:mypass@myhost/?retryWrites=true&w=majority
+
+Notice that Telegram as per their [official documentation](https://core.telegram.org/bots/api#setwebhook) requires you to use any of 443, 80, 88 or 8443 as your HOST_PORT.
+
+If you want to have the bot listen to a custom port, there is the option to add a `PORT` envar. Then command (3) above will read instead:
+
+3. Deploy: `docker run -p <HOST_PORT>:<CUSTOM_CONTAINER_PORT> --env-file .env localhost/ringo`
+
