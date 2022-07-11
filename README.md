@@ -1,4 +1,4 @@
-[![Tests](https://github.com/why-not-try-calmer/notify-join/actions/workflows/python-app.yml/badge.svg)](https://github.com/why-not-try-calmer/notify-join/actions/workflows/python-app.yml)
+[![Tests](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml/badge.svg)](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml)
 
 ## Overview
 
@@ -40,7 +40,7 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
 
 Since I don't plan on investing heavy resources on deployment it's better if users deploy their own copy of this bot. The easiest way is to use Docker / Podman. Create a new directoy, cd to it and then:
 
-1. Clone this repository: `git clone https://github.com/why-not-try-calmer/notify-join.git .`
+1. Clone this repository: `git clone https://github.com/why-not-try-calmer/ringo.git .`
 2. Cd to it and there create your own SSL certificate (for encoding/decoding HTTPS requests to/from Telegram): `openssl req -newkey rsa:2048 -sha256 -nodes -keyout private.key -x509 -days 3650 -out cert.pem`. Follow the interactive instructions.
 3. Build the image: `docker build . -t ringo` (use `docker` if you are able to use `podman`)
 4. Deploy: `docker run -p <HOST_PORT>:8443 --env-file .env localhost/ringo`
