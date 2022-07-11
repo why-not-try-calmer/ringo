@@ -56,6 +56,21 @@ if __name__ == "__main__":
     registerHandlers(app)
     print(f"Setting webhook now. Listening to {PORT} and ready to work.")
 
-    app.run_webhook(
-        listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=f"{ENDPOINT}/{TOKEN}"
-    )
+    from os import path
+
+    if path.exists("./cert.pem") and path.exists("./private.key"):
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TOKEN,
+            webhook_url=f"{ENDPOINT}/{TOKEN}",
+            key="private.key",
+            cert="cert.pem",
+        )
+    else:
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TOKEN,
+            webhook_url=f"{ENDPOINT}/{TOKEN}",
+        )

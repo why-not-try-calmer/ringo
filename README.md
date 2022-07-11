@@ -41,8 +41,9 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
 Since I don't plan on investing heavy resources on deployment it's better if users deploy their own copy of this bot. The easiest way is to use Docker / Podman. Create a new directoy, cd to it and then:
 
 1. Clone this repository: `git clone https://github.com/why-not-try-calmer/notify-join.git .`
-2. Build the image: `docker build . -t ringo` (use `docker` if you are able to use `podman`)
-3. Deploy: `docker run -p <HOST_PORT>:8443 --env-file .env localhost/ringo`
+2. Create your own SSL certificate (for encoding/decoding HTTPS requests to/from Telegram): `openssl req -newkey rsa:2048 -sha256 -nodes -keyout private.key -x509 -days 3650 -out cert.pem`. Follow the interactive instructions.
+3. Build the image: `docker build . -t ringo` (use `docker` if you are able to use `podman`)
+4. Deploy: `docker run -p <HOST_PORT>:8443 --env-file .env localhost/ringo`
 
 The last command assumes that you are using an .env file to pass secrets to the bot. This is required if you don't set ENVARs containing the needed secret by some other means. The bot expects the following ENVARs (random examples):
 
@@ -52,7 +53,7 @@ The last command assumes that you are using an .env file to pass secrets to the 
 
 Notice that Telegram as per their [official documentation](https://core.telegram.org/bots/api#setwebhook) requires you to use any of 443, 80, 88 or 8443 as your HOST_PORT.
 
-If you want to have the bot listen to a custom port, there is the option to add a `PORT` envar. Then command (3) above will read instead:
+If you want to have the bot listen to a custom port, there is the option to add a `PORT` envar. Then command (4) above will read instead:
 
-3. Deploy: `docker run -p <HOST_PORT>:<CUSTOM_CONTAINER_PORT> --env-file .env localhost/ringo`
+4. Deploy: `docker run -p <HOST_PORT>:<CUSTOM_CONTAINER_PORT> --env-file .env localhost/ringo`
 
