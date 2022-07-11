@@ -218,14 +218,14 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     new_members = [
-        (u.id, u.username or u.first_name)
+        (u.id, u.username or u.first_name, u.language_code)
         for u in update.message.new_chat_members
         if update.message.new_chat_members or []
     ]
     if not new_members:
         return
 
-    if context.bot.id in [uid for uid, _ in new_members]:
+    if context.bot.id in [uid for uid, _, _ in new_members]:
         # The newcomer is the bot itself
         report = ""
         if settings := await fetch_settings(chat_id):
@@ -238,9 +238,12 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if settings.helper_chat_id:
                 await context.bot.send_message(settings.helper_chat_id, report)
     else:
+        # Genuinely a new user
         greetings = ", ".join(
-            [mention_markdown(uid, name) for uid, name in new_members]
+            [mention_markdown(uid, name) for uid, name, _ in new_members]
         )
+        welcome_key = new_members[0][2]
+        welcome = "welcome" if not welcome_key in strings['welcome'] else strings['welcome'][welcome_key]
         await context.bot.send_message(
-            chat_id, f"Hi there {greetings}, welcome!", parse_mode=ParseMode.MARKDOWN
+            chat_id, f"Hi there {greetings}, {welcome}!", parse_mode=ParseMode.MARKDOWN
         )

@@ -14,6 +14,18 @@ help = "This bot uses exactly two commands besides `/help` and `/start`: \n-`/se
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
 not_destination = "Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
 
+[welcome]
+de = "Wilkommen"
+en = "welcome"
+es = "bienvenidos/bienvenidas"
+fr = "bienvenue"
+it = "benarrivata/benarrivato"
+ja = "いらっしゃいませ"
+pl = "powitanie"
+pt = "bem-vindo"
+ru = "Добро пожаловать"
+zn = "歡迎"
+
 [settings]
 settings = "You settings read:\n"
 updated = "Thanks, your new settings read:\n" 
