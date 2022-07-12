@@ -1,26 +1,26 @@
 from dataclasses import asdict, dataclass, fields
-from datetime import datetime
+from datetime import date, datetime
 from itertools import pairwise
 from functools import reduce
-from sqlite3 import Date
-from typing import TypeAlias
+from typing import Optional, TypeAlias
 from telegram.helpers import escape_markdown
 
 ChatId: TypeAlias = int | str
 UserId: TypeAlias = int | str
-MessageId = TypeAlias = int | str
+MessageId: TypeAlias = int | str
 
 
 @dataclass
 class Settings:
-    chat_id: ChatId | None = None
-    chat_url: str | None = None
-    mode: str | None = None
-    helper_chat_id: ChatId | None = None
-    verification_msg: str | None = None
+    chat_id: Optional[ChatId] = None
+    chat_url: Optional[str] = None
+    mode: Optional[str] = None
+    helper_chat_id: Optional[ChatId] = None
+    verification_msg: Optional[str] = None
 
-    def __init__(self, settings: dict | str, chat_id: ChatId | None = None):
+    def __init__(self, settings: dict | str, chat_id: Optional[ChatId] = None):
         fs = {f.name for f in fields(Settings)}
+        settings_list = []
         verification_msg = ""
 
         if isinstance(settings, str):
@@ -98,7 +98,7 @@ class Log:
     chat_id: ChatId
     user_id: UserId
     username: str
-    at: Date
+    at: date
 
     def __init__(self, text: str, chat_id: ChatId, user_id: UserId, username: str):
         self.text = text
