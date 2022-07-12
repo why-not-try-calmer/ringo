@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import gather
 from toml import loads
+from os import environ
 
 from app.types import ChatId, Log, Settings
 from app.utils import (
@@ -14,6 +15,7 @@ from app.utils import (
 )
 from app.db import (
     add_pending,
+    fetch_chat_ids,
     log,
     remove_pending,
     fetch_settings,
@@ -281,3 +283,15 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True,
         )
+
+
+async def admin_op(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id, admin_id = update.message.chat.id, update.message.from_user.id
+
+    if environ["ADMIN"] != str(admin_id):
+        return await context.bot.send_message(chat_id, strings["admin"]["error"])
+
+    _, msg = update.message.text.split(" ", maxsplit=1)
+    chat_ids = await fetch_chat_ids()
+
+    await gather(*[context.bot.send_message(cid, msg) for cid in chat_ids])

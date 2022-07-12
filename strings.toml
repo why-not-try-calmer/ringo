@@ -1,3 +1,6 @@
+[admin]
+error = "You need to be the admin operating this service to issue this command"
+
 [chat]
 # This can be overriden by way of a setting
 url = "https://t.me/PopOs_en"

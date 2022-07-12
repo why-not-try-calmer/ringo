@@ -55,3 +55,12 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 
 async def log(contents: Log):
     await logs.insert(asdict(contents))
+
+
+async def fetch_chat_ids() -> list[ChatId]:
+    cursor = chats.find()
+    users_id = []
+    for doc in await cursor.to_list(length=None):
+        if "chat_id" in doc:
+            users_id.append(doc["chat_id"])
+    return users_id

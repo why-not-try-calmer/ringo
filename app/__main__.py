@@ -1,3 +1,4 @@
+from distutils.cmd import Command
 import logging
 import warnings
 from os import environ
@@ -17,6 +18,7 @@ logging.basicConfig(
 warnings.filterwarnings("error", category=PTBUserWarning)
 
 from app.handlers import (
+    admin_op,
     replying_to_bot,
     wants_to_join,
     processing_cbq,
@@ -35,9 +37,19 @@ def registerHandlers(app: Application):
     reset = CommandHandler("reset", resetting)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
     replyToBot = MessageHandler(filters.REPLY, replying_to_bot)
+    adminOp = CommandHandler("admin", admin_op)
 
     app.add_handlers(
-        [joinReqHandler, newMember, acceptReject, answerHelp, setBot, reset, replyToBot]
+        [
+            joinReqHandler,
+            newMember,
+            acceptReject,
+            answerHelp,
+            setBot,
+            reset,
+            replyToBot,
+            adminOp,
+        ]
     )
     print("Handlers successfully registered")
 
