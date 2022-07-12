@@ -64,16 +64,19 @@ class Settings:
             d = asdict(self)
 
             def reducer(acc, item) -> str:
-                if item[0] in ["chat_url", "verification_msg"] and (
-                    not item[1] or item[1] == "None"
-                ):
+                k, v = (
+                    item[0],
+                    str(item[1]) if not isinstance(item[1], str) else item[1],
+                )
+
+                if k in ["chat_url", "verification_msg"] and (not v or v == "None"):
                     return (
                         acc
                         + "\n"
                         + b"\xE2\x9A\xA0".decode("utf-8")
-                        + f"Missing an important value here ({escape_markdown(item[0])})! The bot won't be able to operate properly without it!\n\n"
+                        + f"Missing an important value here ({escape_markdown(k)})! The bot won't be able to operate properly without it!\n\n"
                     )
-                return acc + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
+                return acc + f"{escape_markdown(k)}: {escape_markdown(v)}\n"
 
             return reduce(reducer, d.items(), "")
 

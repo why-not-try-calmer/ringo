@@ -18,7 +18,6 @@ logs: AsyncIOMotorCollection = db["logs"]
 
 async def fetch_settings(chat_id: ChatId) -> Settings | None:
     if doc := await chats.find_one({"chat_id": chat_id}):
-        print("Found settings: ", Settings(doc).as_dict_no_none())
         return Settings(doc)
 
 
