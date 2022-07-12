@@ -26,7 +26,6 @@ async def reset(chat_id: ChatId):
 
 
 async def upsert_settings(settings: Settings) -> Settings | None:
-    print("Trying to update: ", settings.as_dict_no_none())
     if updated := await chats.find_one_and_update(
         {"chat_id": settings.chat_id},
         {"$set": settings.as_dict_no_none()},
@@ -34,6 +33,10 @@ async def upsert_settings(settings: Settings) -> Settings | None:
         return_document=ReturnDocument.AFTER,
     ):
         return Settings(updated)
+
+
+async def remove_chats(chats_ids: list[ChatId]):
+    await chats.delete_many({"chat_id": ""}, {"$in": chats_ids})
 
 
 async def add_pending(chat_id: ChatId, user_id: UserId, message_id: MessageId):

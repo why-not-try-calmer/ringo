@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
-from asyncio import gather
+from asyncio import as_completed, gather
 from toml import loads
 from os import environ
 
@@ -10,6 +10,7 @@ from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
+    mark_excepted_coroutines,
     mention_markdown,
     withAuth,
 )
@@ -17,6 +18,7 @@ from app.db import (
     add_pending,
     fetch_chat_ids,
     log,
+    remove_chats,
     remove_pending,
     fetch_settings,
     upsert_settings,
@@ -291,7 +293,18 @@ async def admin_op(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if environ["ADMIN"] != str(admin_id):
         return await context.bot.send_message(chat_id, strings["admin"]["error"])
 
+    # Get all chats_ids
     _, msg = update.message.text.split(" ", maxsplit=1)
     chat_ids = await fetch_chat_ids()
 
-    await gather(*[context.bot.send_message(cid, msg) for cid in chat_ids])
+    # Broadcast, removing chats_ids that didn't accept the message
+    failures = [
+        await t
+        for t in as_completed(
+            [
+                mark_excepted_coroutines(cid, context.bot.send_message(cid, msg))
+                for cid in chat_ids
+            ]
+        )
+    ]
+    await remove_chats([f for f in failures if f])

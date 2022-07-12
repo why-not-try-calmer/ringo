@@ -36,6 +36,10 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     ```
 - `/reset` (no parameter): resets the bot to its default settings relative to chat(s) you manage.
 
+## Tests
+
+Run test with `python -m pytest -s --asyncio-mode=strict`
+
 ## Deploy
 
 Since I don't plan on investing heavy resources on deployment it's better if users deploy their own copy of this bot. The easiest way is to use Docker / Podman. Create a new directoy, cd to it and then:

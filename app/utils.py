@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable, Coroutine
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -72,3 +72,10 @@ def withAuth(f: Callable):
             )
 
     return inner
+
+
+async def mark_excepted_coroutines(marker: Any, coroutine: Coroutine) -> Any | None:
+    try:
+        await coroutine
+    except Exception:
+        return marker
