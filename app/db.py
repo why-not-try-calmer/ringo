@@ -28,7 +28,7 @@ async def reset(chat_id: ChatId):
 async def upsert_settings(settings: Settings) -> Settings | None:
     if updated := await chats.find_one_and_update(
         {"chat_id": settings.chat_id},
-        {"$set": settings.as_dict_no_none()},
+        {"$set": settings.as_dict()},
         upsert=True,
         return_document=ReturnDocument.AFTER,
     ):

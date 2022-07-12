@@ -1,4 +1,3 @@
-from dataclasses import asdict, dataclass, fields
 from datetime import date, datetime
 from itertools import pairwise
 from functools import reduce
@@ -10,58 +9,53 @@ UserId: TypeAlias = int | str
 MessageId: TypeAlias = int | str
 
 
-@dataclass
-class Settings:
+class AsDict:
+    def as_dict(self) -> dict:
+        return vars(self)
+
+
+class Settings(AsDict):
     chat_id: Optional[ChatId] = None
     chat_url: Optional[str] = None
     mode: Optional[str] = None
     helper_chat_id: Optional[ChatId] = None
     verification_msg: Optional[str] = None
 
-    def __init__(self, settings: dict | str, chat_id: Optional[ChatId] = None):
-        fs = {f.name for f in fields(Settings)}
-        settings_list = []
-        verification_msg = ""
+    def __init__(self, settings: dict | str, chat_id: Optional[int | str] = None):
+        clean_string_array = []
 
         if isinstance(settings, str):
-            settings_list = []
+            line_broken = settings.split("\n", maxsplit=1)
+            clean_string_array = []
 
-            # Handling the special case of 'verification_msg' first
-            if "verification_msg" in settings:
-                _settings, msg = settings.split("\n", maxsplit=1)
-                settings_list = list(
-                    filter(
-                        lambda w: not w in ["verification_msg", "/set"],
-                        _settings.split(" "),
-                    )
-                )
-                verification_msg = msg
+            if len(line_broken) == 2:
+                clean_string_array = line_broken[0].split(" ")[1:] + [line_broken[1]]
+            else:
+                clean_string_array = line_broken[0].split(" ")[1:]
 
-            s = settings_list or settings.split(" ")
+        d = (
+            settings
+            if isinstance(settings, dict)
+            else dict(pairwise(clean_string_array))
+        )
 
-            # Ensuring list into dict
-            if len(s) == 1 or not s[1]:
-                return
-
-            # Ensuring dict
-            settings = dict(pairwise(s))
-
-        for k, v in settings.items():
-            if k in fs:
+        for k, v in d.items():
+            if k in {
+                "helper_chat_id",
+                "chat_id",
+                "chat_url",
+                "verification_msg",
+                "mode",
+            } and not (v == "None" or v is None):
                 setattr(self, k, v if isinstance(v, str) else str(v))
-
-        if verification_msg:
-            self.verification_msg = verification_msg
 
         if chat_id:
             self.chat_id = chat_id
 
-    def as_dict_no_none(self) -> dict:
-        return {k: v for k, v in asdict(self).items() if v and v is not None}
-
     def render(self, with_alert: bool) -> str:
+        d = self.as_dict()
+
         if with_alert:
-            d = asdict(self)
 
             def reducer(acc, item) -> str:
                 k, v = (
@@ -81,7 +75,6 @@ class Settings:
             return reduce(reducer, d.items(), "")
 
         else:
-            d = self.as_dict_no_none()
             reducer = (
                 lambda acc, item: acc
                 + f"{escape_markdown(item[0])}: {escape_markdown(item[1])}\n"
@@ -89,11 +82,10 @@ class Settings:
             return reduce(reducer, d.items(), "")
 
     def __len__(self) -> int:
-        return len(vars(self))
+        return len(self.as_dict())
 
 
-@dataclass
-class Log:
+class Log(AsDict):
     text: str
     chat_id: ChatId
     user_id: UserId
