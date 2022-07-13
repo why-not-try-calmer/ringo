@@ -97,11 +97,9 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id, strings["settings"]["missing"], disable_web_page_preview=True
         )
 
-    # Mising chat_url
-    if not hasattr(settings, "chat_url"):
-        return await context.bot.send_message(
-            chat_id, strings["settings"]["no_chat_url"], disable_web_page_preview=True
-        )
+    # Inactive
+    if hasattr(settings, "active") and settings.active == "off":
+        return
 
     # Auto mode
     if hasattr(settings, "mode") and settings.mode == "auto":

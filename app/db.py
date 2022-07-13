@@ -64,6 +64,6 @@ async def fetch_chat_ids() -> list[ChatId]:
     cursor = chats.find()
     users_id = []
     for doc in await cursor.to_list(length=None):
-        if "chat_id" in doc:
+        if "chat_id" in doc and ("changelog" not in doc or doc["changelog"] != "off"):
             users_id.append(doc["chat_id"])
     return users_id

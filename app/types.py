@@ -20,13 +20,14 @@ class Settings(AsDict):
     mode: Optional[str] = None
     helper_chat_id: Optional[ChatId] = None
     verification_msg: Optional[str] = None
+    changelog: Optional[str] = None
+    active: Optional[str] = None
 
     def __init__(self, settings: dict | str, chat_id: Optional[int | str] = None):
         clean_string_array = []
 
         if isinstance(settings, str):
             line_broken = settings.split("\n", maxsplit=1)
-            clean_string_array = []
 
             if len(line_broken) == 2:
                 clean_string_array = line_broken[0].split(" ")[1:] + [line_broken[1]]
@@ -46,6 +47,8 @@ class Settings(AsDict):
                 "chat_url",
                 "verification_msg",
                 "mode",
+                "changelog",
+                "active",
             } and not (v == "None" or v is None):
                 setattr(self, k, v if isinstance(v, str) else str(v))
 
