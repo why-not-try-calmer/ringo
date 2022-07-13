@@ -5,6 +5,7 @@ from motor.motor_asyncio import (
     AsyncIOMotorDatabase,
 )
 from pymongo.collection import ReturnDocument
+from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from os import environ
 from datetime import datetime
 
@@ -15,13 +16,15 @@ db: AsyncIOMotorDatabase = client["alert-me"]
 chats: AsyncIOMotorCollection = db["chats"]
 logs: AsyncIOMotorCollection = db["logs"]
 
+""" Settings """
+
 
 async def fetch_settings(chat_id: ChatId) -> Settings | None:
     if doc := await chats.find_one({"chat_id": chat_id}):
         return Settings(doc)
 
 
-async def reset(chat_id: ChatId):
+async def reset(chat_id: ChatId) -> DeleteResult:
     return await chats.delete_one({"chat_id": chat_id})
 
 
@@ -35,6 +38,9 @@ async def upsert_settings(settings: Settings) -> Settings | None:
         return Settings(updated)
 
 
+""" Chats """
+
+
 async def fetch_chat_ids() -> list[ChatId]:
     cursor = chats.find()
     users_id = []
@@ -44,11 +50,13 @@ async def fetch_chat_ids() -> list[ChatId]:
     return users_id
 
 
-async def remove_chats(chats_ids: list[ChatId]):
+async def remove_chats(chats_ids: list[ChatId]) -> DeleteResult:
     return await chats.delete_many({"chat_id": {"$in": chats_ids}})
 
 
-async def add_pending(chat_id: ChatId, user_id: UserId, message_id: MessageId):
+async def add_pending(
+    chat_id: ChatId, user_id: UserId, message_id: MessageId
+) -> UpdateResult:
     user_key = f"pending_{user_id}"
     payload = {"message_id": message_id, "at": datetime.now()}
     return await chats.find_one_and_update(
@@ -65,5 +73,8 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
     return doc[f"pending_{user_id}"]["message_id"]
 
 
-async def log(contents: Log):
-    return await logs.insert(asdict(contents))
+""" Logs """
+
+
+async def log(contents: Log) -> InsertOneResult:
+    return await logs.insert_one(asdict(contents))
