@@ -2,9 +2,8 @@ from asyncio import sleep
 from typing import Any, Callable, Coroutine
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
+
 from app.db import deprecate_not_verified
-
-
 from app.types import ChatId, UserId
 
 

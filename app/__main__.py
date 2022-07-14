@@ -10,7 +10,6 @@ from telegram.ext import (
     filters,
 )
 from telegram.warnings import PTBUserWarning
-from app.db import deprecate_not_verified
 
 from app.utils import run_deprecate_not_verified
 
