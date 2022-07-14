@@ -13,7 +13,7 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
-from app.post import mark_excepted_coroutines
+from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
     deprecate_not_verified,
