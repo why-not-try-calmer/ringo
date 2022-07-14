@@ -1,6 +1,13 @@
+from typing import Any, Coroutine
 import pytest
 from asyncio import as_completed
-from app.post import mark_excepted_coroutines
+
+
+async def mark_excepted_coroutines(marker: Any, coroutine: Coroutine) -> Any | None:
+    try:
+        await coroutine
+    except Exception:
+        return marker
 
 
 @pytest.mark.asyncio
