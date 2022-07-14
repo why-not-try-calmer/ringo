@@ -1,5 +1,5 @@
 from toml import loads
-from app.types import UserLog, Settings, UserLog
+from app.types import UserLog, Settings
 
 
 def test_settings():
