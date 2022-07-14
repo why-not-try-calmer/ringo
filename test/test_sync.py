@@ -1,6 +1,5 @@
-from dataclasses import asdict
 from toml import loads
-from app.types import Log, Settings
+from app.types import UserLog, Settings, UserLog
 
 
 def test_settings():
@@ -31,5 +30,5 @@ def test_string():
 
 
 def test_log():
-    l = Log("1234", 1, 1, "my_name")
+    l = UserLog("wants_to_join", 1, 1, "my_name")
     assert len(l.as_dict()) == 5

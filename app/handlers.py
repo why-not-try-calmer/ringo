@@ -5,7 +5,7 @@ from asyncio import create_task, gather
 from toml import loads
 from os import environ
 
-from app.types import ChatId, Log, Settings
+from app.types import ChatId, UserLog, Settings
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -122,7 +122,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     else settings.chat_url,
                 ),
             ),
-            log(Log("wants_to_join", chat_id, user_id, user_name)),
+            log(UserLog("wants_to_join", chat_id, user_id, user_name)),
         )
         return
 
@@ -165,7 +165,7 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         and update.message.reply_to_message.chat.type == ChatType.PRIVATE
     ):
         await gather(
-            log(Log("replying_to_bot", user_id, user_id, user_name, text)),
+            log(UserLog("replying_to_bot", user_id, user_id, user_name, text)),
             context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
         )
 
@@ -201,7 +201,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
             context.bot.answer_callback_query(update.callback_query.id),
             log(
-                Log(
+                UserLog(
                     "has_verified",
                     update.callback_query.from_user.id,
                     update.callback_query.from_user.id,

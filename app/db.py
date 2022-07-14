@@ -9,7 +9,16 @@ from os import environ
 from datetime import datetime, timedelta
 from asyncio import sleep
 
-from app.types import ChatId, Log, MessageId, Settings, UserId
+from app.types import (
+    AsDict,
+    ChatId,
+    UserLog,
+    ServiceLog,
+    MessageId,
+    ServiceLog,
+    Settings,
+    UserId,
+)
 
 client = AsyncIOMotorClient(environ.get("MONGO_CONN_STRING", ""))
 db: AsyncIOMotorDatabase = client["alert-me"]
@@ -78,7 +87,7 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 busy = False
 
 
-async def log(contents: Log) -> InsertOneResult:
+async def log(contents: AsDict) -> InsertOneResult:
     return await logs.insert_one(contents.as_dict())
 
 
@@ -104,4 +113,5 @@ async def deprecate_not_verified() -> DeleteResult | None:
     users_ids = [u["user_id"] for u in await docs if pred(u)]
     busy = False
 
-    return await logs.delete_many({"user_id": {"$in": users_ids}})
+    deleted = await logs.delete_many({"user_id": {"$in": users_ids}})
+    await log(ServiceLog("deletion", f"Deleted {deleted.count} user logs"))

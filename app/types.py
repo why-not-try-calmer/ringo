@@ -91,7 +91,7 @@ class Settings(AsDict):
 Operation = Literal["wants_to_join", "has_verified", "replying_to_bot"]
 
 
-class Log(AsDict):
+class UserLog(AsDict):
     operation: Operation
     message: Optional[str]
     chat_id: ChatId
@@ -122,3 +122,15 @@ class Log(AsDict):
 
         if message:
             self.message = message
+
+
+class ServiceLog(AsDict):
+    operation: str
+    message: str
+    at: datetime
+
+    def __init__(self, operation, message):
+        now = datetime.now()
+        self.operation = operation
+        self.message = message
+        self.at = now
