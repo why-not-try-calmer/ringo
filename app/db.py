@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from app.types import ChatId, Log, MessageId, Settings, UserId
 
-client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
+client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"] or "")
 db: AsyncIOMotorDatabase = client["alert-me"]
 chats: AsyncIOMotorCollection = db["chats"]
 logs: AsyncIOMotorCollection = db["logs"]

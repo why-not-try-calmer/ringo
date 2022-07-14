@@ -1,9 +1,7 @@
-from asyncio import sleep
-from typing import Any, Callable, Coroutine
+from typing import Callable
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.db import deprecate_not_verified
 from app.types import ChatId, UserId
 
 
@@ -74,19 +72,3 @@ def withAuth(f: Callable):
             )
 
     return inner
-
-
-async def mark_excepted_coroutines(marker: Any, coroutine: Coroutine) -> Any | None:
-    try:
-        await coroutine
-    except Exception:
-        return marker
-
-
-async def run_deprecate_not_verified():
-    print(
-        "Spawned task for cleaning up database. Running once every 6 minutes. Next run in 6 minutes."
-    )
-    while True:
-        await sleep(60 * 10)
-        await deprecate_not_verified()

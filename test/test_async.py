@@ -1,6 +1,6 @@
 import pytest
 from asyncio import as_completed
-from app.utils import mark_excepted_coroutines
+from app.post import mark_excepted_coroutines
 
 
 @pytest.mark.asyncio
