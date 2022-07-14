@@ -1,4 +1,3 @@
-from distutils.cmd import Command
 import logging
 import warnings
 from os import environ
@@ -11,6 +10,9 @@ from telegram.ext import (
     filters,
 )
 from telegram.warnings import PTBUserWarning
+from app.db import deprecate_not_verified
+
+from app.utils import run_deprecate_not_verified
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -66,8 +68,9 @@ if __name__ == "__main__":
 
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
-    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
+    app.create_task(run_deprecate_not_verified())
 
+    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
     from os import path
 
     if path.exists("./cert.pem") and path.exists("./private.key"):

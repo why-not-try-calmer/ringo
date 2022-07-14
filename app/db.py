@@ -7,7 +7,7 @@ from motor.motor_asyncio import (
 from pymongo.collection import ReturnDocument
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from os import environ
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.types import ChatId, Log, MessageId, Settings, UserId
 
@@ -78,3 +78,19 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 
 async def log(contents: Log) -> InsertOneResult:
     return await logs.insert_one(asdict(contents))
+
+
+async def deprecate_not_verified() -> DeleteResult:
+    t = timedelta(hours=6)
+    now = datetime.now()
+    pred = lambda item: now - item["at"] >= t
+    docs = logs.find(
+        {
+            "user_id": {"$exists": True},
+            "wants_to_join": {"$exists": True},
+            "at": {"$exists": True},
+            "has_verified": {"$exists": False},
+        }
+    )
+    users_ids = [u["user_id"] for u in await docs if pred(u)]
+    return await logs.delete_many({"user_id": {"$in": users_ids}})

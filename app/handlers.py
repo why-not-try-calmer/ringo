@@ -103,17 +103,22 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Auto mode
     if hasattr(settings, "mode") and settings.mode == "auto":
-        await context.bot.send_message(
-            user_id,
-            settings.verification_msg
-            if settings.verification_msg and len(settings.verification_msg) >= 10
-            else strings["wants_to_join"]["verification_msg"],
-            disable_web_page_preview=True,
-            reply_markup=agree_btn(
-                strings["wants_to_join"]["ok"],
-                chat_id,
-                strings["chat"]["url"] if not settings.chat_url else settings.chat_url,
+        await gather(
+            context.bot.send_message(
+                user_id,
+                settings.verification_msg
+                if settings.verification_msg and len(settings.verification_msg) >= 10
+                else strings["wants_to_join"]["verification_msg"],
+                disable_web_page_preview=True,
+                reply_markup=agree_btn(
+                    strings["wants_to_join"]["ok"],
+                    chat_id,
+                    strings["chat"]["url"]
+                    if not settings.chat_url
+                    else settings.chat_url,
+                ),
             ),
+            log(Log("wants_to_join", chat_id, user_id, user_name)),
         )
         return
 
@@ -156,7 +161,7 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         and update.message.reply_to_message.chat.type == ChatType.PRIVATE
     ):
         await gather(
-            log(Log(text, user_id, user_id, user_name)),
+            log(Log("replying_to_bot", user_id, user_id, user_name, text)),
             context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
         )
 
@@ -178,6 +183,9 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 'Parsing'
     splitted = update.callback_query.data.split("§")
     operation, chat_id_str, chat_url = splitted[0], splitted[1], splitted[2]
+    user_id_str, user_name = splitted[3], splitted[4]
+    user_id = int(user_id_str)
+    chat_id = int(chat_id_str)
 
     # Auto mode
     if operation == "self-confirm":
@@ -191,14 +199,12 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id_str, update.callback_query.from_user.id
             ),
             context.bot.answer_callback_query(update.callback_query.id),
+            log(Log("has_verified", chat_id, user_id, user_name)),
         )
         return
 
     # Manual mode
     # Setting up verdict handling
-    user_id_str, user_name = splitted[3], splitted[4]
-    user_id = int(user_id_str)
-    chat_id = int(chat_id_str)
     confirmation_chat_id = update.callback_query.message.chat.id
     admin_name = (
         update.callback_query.from_user.username
