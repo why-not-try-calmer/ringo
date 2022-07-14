@@ -1,4 +1,3 @@
-from distutils.cmd import Command
 import logging
 import warnings
 from os import environ
@@ -66,8 +65,8 @@ if __name__ == "__main__":
 
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
-    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
 
+    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
     from os import path
 
     if path.exists("./cert.pem") and path.exists("./private.key"):

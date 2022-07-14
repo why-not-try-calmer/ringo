@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from itertools import pairwise
 from functools import reduce
-from typing import Optional, TypeAlias
+from typing import Literal, Optional, TypeAlias
 from telegram.helpers import escape_markdown
 
 ChatId: TypeAlias = int | str
@@ -88,16 +88,37 @@ class Settings(AsDict):
         return len(self.as_dict())
 
 
+Operation = Literal["wants_to_join", "has_verified", "replying_to_bot"]
+
+
 class Log(AsDict):
-    text: str
+    operation: Operation
+    message: Optional[str]
     chat_id: ChatId
     user_id: UserId
     username: str
     at: date
+    joined_at: Optional[datetime]
 
-    def __init__(self, text: str, chat_id: ChatId, user_id: UserId, username: str):
-        self.text = text
+    def __init__(
+        self,
+        operation: Operation,
+        chat_id: ChatId,
+        user_id: UserId,
+        username: str,
+        message: Optional[str] = None,
+    ):
+        self.operation = operation
         self.chat_id = chat_id
         self.user_id = user_id
         self.username = username
-        self.at = datetime.now()
+
+        now = datetime.now()
+
+        if operation == "has_joined":
+            self.joined_at = now
+        else:
+            self.at = now
+
+        if message:
+            self.message = message

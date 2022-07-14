@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
-from asyncio import gather
+from asyncio import create_task, gather
 from toml import loads
 from os import environ
 
@@ -10,12 +10,13 @@ from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
-    mark_excepted_coroutines,
     mention_markdown,
     withAuth,
 )
+from app.post import mark_excepted_coroutines
 from app.db import (
     add_pending,
+    deprecate_not_verified,
     fetch_chat_ids,
     log,
     remove_chats,
@@ -78,6 +79,9 @@ async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Cleaning up just in case
+    create_task(deprecate_not_verified())
+
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
         request.from_user.id,
@@ -103,17 +107,22 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Auto mode
     if hasattr(settings, "mode") and settings.mode == "auto":
-        await context.bot.send_message(
-            user_id,
-            settings.verification_msg
-            if settings.verification_msg and len(settings.verification_msg) >= 10
-            else strings["wants_to_join"]["verification_msg"],
-            disable_web_page_preview=True,
-            reply_markup=agree_btn(
-                strings["wants_to_join"]["ok"],
-                chat_id,
-                strings["chat"]["url"] if not settings.chat_url else settings.chat_url,
+        await gather(
+            context.bot.send_message(
+                user_id,
+                settings.verification_msg
+                if settings.verification_msg and len(settings.verification_msg) >= 10
+                else strings["wants_to_join"]["verification_msg"],
+                disable_web_page_preview=True,
+                reply_markup=agree_btn(
+                    strings["wants_to_join"]["ok"],
+                    chat_id,
+                    strings["chat"]["url"]
+                    if not settings.chat_url
+                    else settings.chat_url,
+                ),
             ),
+            log(Log("wants_to_join", chat_id, user_id, user_name)),
         )
         return
 
@@ -156,7 +165,7 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         and update.message.reply_to_message.chat.type == ChatType.PRIVATE
     ):
         await gather(
-            log(Log(text, user_id, user_id, user_name)),
+            log(Log("replying_to_bot", user_id, user_id, user_name, text)),
             context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
         )
 
@@ -191,6 +200,15 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id_str, update.callback_query.from_user.id
             ),
             context.bot.answer_callback_query(update.callback_query.id),
+            log(
+                Log(
+                    "has_verified",
+                    update.callback_query.from_user.id,
+                    update.callback_query.from_user.id,
+                    update.callback_query.from_user.username
+                    or update.callback_query.from_user.first_name,
+                )
+            ),
         )
         return
 
