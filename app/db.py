@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
@@ -8,8 +7,17 @@ from pymongo.collection import ReturnDocument
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from os import environ
 from datetime import datetime, timedelta
+from asyncio import sleep
 
-from app.types import ChatId, Log, MessageId, Settings, UserId
+from app.types import (
+    AsDict,
+    ChatId,
+    ServiceLog,
+    MessageId,
+    ServiceLog,
+    Settings,
+    UserId,
+)
 
 client = AsyncIOMotorClient(environ.get("MONGO_CONN_STRING", ""))
 db: AsyncIOMotorDatabase = client["alert-me"]
@@ -75,12 +83,21 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 
 """ Logs """
 
+busy = False
 
-async def log(contents: Log) -> InsertOneResult:
+
+async def log(contents: AsDict) -> InsertOneResult:
     return await logs.insert_one(contents.as_dict())
 
 
-async def deprecate_not_verified() -> DeleteResult:
+async def deprecate_not_verified() -> DeleteResult | None:
+    global busy
+    await sleep(60)
+
+    if busy:
+        return
+
+    busy = True
     t = timedelta(hours=6)
     now = datetime.now()
     pred = lambda item: now - item["at"] >= t
@@ -92,5 +109,8 @@ async def deprecate_not_verified() -> DeleteResult:
             "has_verified": {"$exists": False},
         }
     )
-    users_ids = [u["user_id"] for u in await docs if pred(u)]
-    return await logs.delete_many({"user_id": {"$in": users_ids}})
+    users_ids = [u["user_id"] for u in await docs.to_list(length=None) if pred(u)]
+    busy = False
+
+    deleted = await logs.delete_many({"user_id": {"$in": users_ids}})
+    await log(ServiceLog("deletion", f"Deleted {deleted.count} user logs"))

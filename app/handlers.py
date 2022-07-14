@@ -5,7 +5,7 @@ from asyncio import create_task, gather
 from toml import loads
 from os import environ
 
-from app.types import ChatId, Log, Settings
+from app.types import ChatId, UserLog, Settings
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -13,7 +13,7 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
-from app.post import mark_excepted_coroutines
+from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
     deprecate_not_verified,
@@ -122,7 +122,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     else settings.chat_url,
                 ),
             ),
-            log(Log("wants_to_join", chat_id, user_id, user_name)),
+            log(UserLog("wants_to_join", chat_id, user_id, user_name)),
         )
         return
 
@@ -151,21 +151,22 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not hasattr(update, "message"):
+    if not (hasattr(update, "message") or hasattr(update.message, "reply_to_message")):
         print(f"Unable to make use of this reply: {update.message}")
         return
 
-    user_id, user_name, text = (
-        update.message.from_user.id,
-        update.message.from_user.username or update.message.from_user.first_name,
-        update.message.text,
-    )
     if (
         update.message.reply_to_message.from_user.id == context.bot.id
         and update.message.reply_to_message.chat.type == ChatType.PRIVATE
     ):
+        user_id, user_name, text = (
+            update.message.from_user.id,
+            update.message.from_user.username or update.message.from_user.first_name,
+            update.message.text,
+        )
+
         await gather(
-            log(Log("replying_to_bot", user_id, user_id, user_name, text)),
+            log(UserLog("replying_to_bot", user_id, user_id, user_name, text)),
             context.bot.send_message(user_id, b"\xF0\x9F\x91\x8C".decode("utf-8")),
         )
 
@@ -201,7 +202,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
             context.bot.answer_callback_query(update.callback_query.id),
             log(
-                Log(
+                UserLog(
                     "has_verified",
                     update.callback_query.from_user.id,
                     update.callback_query.from_user.id,
