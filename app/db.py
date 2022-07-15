@@ -112,5 +112,5 @@ async def deprecate_not_verified() -> DeleteResult | None:
     users_ids = [u["user_id"] for u in await docs.to_list(length=None) if pred(u)]
     busy = False
 
-    deleted = await logs.delete_many({"user_id": {"$in": users_ids}})
-    await log(ServiceLog("deletion", f"Deleted {deleted.count} user logs"))
+    res = await logs.delete_many({"user_id": {"$in": users_ids}})
+    await log(ServiceLog("deletion", f"Deleted {res.deleted_count} user logs"))
