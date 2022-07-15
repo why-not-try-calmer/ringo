@@ -16,6 +16,7 @@ help = "This bot uses exactly two commands besides `/help` and `/start`: \n-`/se
 [has_joined]
 destination = "Thanks for adding me to this monitoring chat. If that's not done already, add me to the chat whose join requests you want me to monitor. They will be notified here:"
 not_destination = "Thanks for adding me to this group chat. If that's not done already, add me to the monitoring chat. Join requests made here will be notified to the monitoring chat."
+post_join = "(optional) We'd be interested to know how you've heard of this chat, by the way. Simply reply to this message if you'd like to better understand who our users are! :)"
 
 [welcome]
 ben = "স্বাগত"

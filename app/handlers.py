@@ -152,7 +152,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not (hasattr(update, "message") or hasattr(update.message, "reply_to_message")):
-        print(f"Unable to make use of this reply: {update.message}")
+        print(f"Unable to make use of this update: {update}")
         return
 
     if (
@@ -194,13 +194,15 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await gather(
             context.bot.send_message(
                 update.callback_query.from_user.id,
-                f"Thanks, you are welcome to join {chat_url}. (optional) We'd be interested to know how you've heard of this chat, by the way. Simply reply to this message if you'd like to better understand who our users are! :)",
+                f"Thanks, you are welcome to join {chat_url}. {strings['has_joined']['post_join']}",
                 disable_web_page_preview=True,
             ),
+            context.bot.answer_callback_query(update.callback_query.id),
+        )
+        await gather(
             context.bot.approve_chat_join_request(
                 chat_id_str, update.callback_query.from_user.id
             ),
-            context.bot.answer_callback_query(update.callback_query.id),
             log(
                 UserLog(
                     "has_verified",
