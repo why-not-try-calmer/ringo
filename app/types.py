@@ -55,7 +55,7 @@ class Settings(AsDict):
         if chat_id:
             self.chat_id = chat_id
 
-    def render(self, with_alert: bool) -> str:
+    def render(self, with_alert: bool = True) -> str:
         d = self.as_dict()
 
         if with_alert:

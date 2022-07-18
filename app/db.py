@@ -19,7 +19,7 @@ from app.types import (
     UserId,
 )
 
-client = AsyncIOMotorClient(environ.get("MONGO_CONN_STRING", ""))
+client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
 db: AsyncIOMotorDatabase = client["alert-me"]
 chats: AsyncIOMotorCollection = db["chats"]
 logs: AsyncIOMotorCollection = db["logs"]
