@@ -7,10 +7,10 @@ COPY ./requirements.txt .
 ENV PIPENV_VENV_IN_PROJECT=1
 RUN pipenv install --three
 
-FROM python:3.10-alpine
-WORKDIR /opt/app
+FROM python:3.10-slim-bullseye
+    WORKDIR /opt/app
 
 COPY . .
 COPY --from=builder /opt/app/.venv/ .venv/
 
-CMD source .venv/bin/activate && python -m app
+CMD . .venv/bin/activate && python -m app
