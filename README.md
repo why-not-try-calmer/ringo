@@ -1,4 +1,5 @@
-[![Tests](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml/badge.svg)](https://github.com/why-not-try-calmer/ringo/actions/workflows/python-app.yml)
+[![Test](https://github.com/why-not-try-calmer/ringo/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/why-not-try-calmer/ringo/actions/workflows/test.yml)
+[![Publish](https://github.com/why-not-try-calmer/ringo/actions/workflows/publish.yml/badge.svg?branch=master)](https://github.com/why-not-try-calmer/ringo/actions/workflows/publish.yml)
 
 ## Overview
 
