@@ -8,7 +8,7 @@ ENV PIPENV_VENV_IN_PROJECT=1
 RUN pipenv install --three
 
 FROM python:3.10-slim-bullseye
-    WORKDIR /opt/app
+WORKDIR /opt/app
 
 COPY . .
 COPY --from=builder /opt/app/.venv/ .venv/
