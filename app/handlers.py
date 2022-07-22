@@ -156,7 +156,8 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if (
-        update.message.reply_to_message.from_user.id == context.bot.id
+        update.message.reply_to_message is not None
+        and update.message.reply_to_message.from_user.id == context.bot.id
         and update.message.reply_to_message.chat.type == ChatType.PRIVATE
     ):
         user_id, user_name, text = (

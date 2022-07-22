@@ -1,5 +1,6 @@
 import logging
 import warnings
+import sys
 from os import environ
 from telegram.ext import (
     Application,
@@ -12,7 +13,8 @@ from telegram.ext import (
 from telegram.warnings import PTBUserWarning
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO,
+    stream=sys.stdout
 )
 warnings.filterwarnings("error", category=PTBUserWarning)
 
