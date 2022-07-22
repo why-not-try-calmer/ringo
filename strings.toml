@@ -1,4 +1,5 @@
 [config]
+# "webhook" | "polling"
 deployment = "polling"
 
 [admin]

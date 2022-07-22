@@ -58,7 +58,6 @@ if __name__ == "__main__":
     TOKEN = environ["TOKEN"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
-    # "webhook" | "polling"
     DEPLOYMENT = strings["config"]["deployment"]
 
     from asyncio import set_event_loop_policy
