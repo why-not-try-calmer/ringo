@@ -1,5 +1,6 @@
 import logging
 import warnings
+import sys
 from sys import argv, stdout
 from os import environ
 from telegram.ext import (
@@ -13,6 +14,7 @@ from telegram.ext import (
 from telegram.warnings import PTBUserWarning
 
 logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
     stream=stdout,
@@ -28,6 +30,7 @@ from app.handlers import (
     setting_bot,
     resetting,
     has_joined,
+    strings,
 )
 
 
@@ -64,12 +67,17 @@ if __name__ == "__main__":
     TOKEN = environ["TOKEN"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
+    DEPLOYMENT = strings["config"]["deployment"]
 
     set_event_loop_policy(EventLoopPolicy())
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
 
     if "polling" in argv[1] if len(argv) >= 2 else False:
+        print("Running in long-poll mode. Good luck.")
+        app.run_polling(drop_pending_updates=True)
+
+    if DEPLOYMENT == "polling":
         print("Running in long-poll mode. Good luck.")
         app.run_polling(drop_pending_updates=True)
 
