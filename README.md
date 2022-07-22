@@ -55,10 +55,10 @@ Since I don't plan on investing heavy resources on deployment it's better if use
 The last command assumes that you are using an .env file to pass secrets to the bot. This is required if you don't set ENVARs containing the needed secret by some other means. The bot expects the following ENVARs (random examples):
 
 ```
-ADMIN=userid_of_admin           <-- the chat the operator is going to use to administrate the bot
-ENDPOINT=https://some.ur.l      <-- the webhook's url
-MONGO_CONN_STRING=mongodb+srv://myapp:mypass@myhost/?retryWrites=true&w=majority  <-- the Mongo db connection string
-TOKEN=123344:DFKDFK54KFKkdslkelg1       <-- the Telegram token
+ADMIN=userid_of_admin       <- the chat the operator is going to use to administrate the bot
+ENDPOINT=https://some.ur.l  <- the webhook's url
+MONGO_CONN_STRING=mongodb+srv://myapp:mypass@myhost/?retryWrites=true&w=majority  <- the Mongo db connection string
+TOKEN=123344:DFKDFK54KFKkdslkelg1 <- your Telegram token
 ```
 Notice that Telegram as per their [official documentation](https://core.telegram.org/bots/api#setwebhook) requires you to use any of 443, 80, 88 or 8443 as your HOST_PORT.
 
@@ -66,3 +66,4 @@ If you want to have the bot listen to a custom port, there is the option to add 
 
 4. Deploy: `docker run -p <HOST_PORT>:<CUSTOM_CONTAINER_PORT> --env-file .env localhost/ringo`
 
+Finally to start the bot run `python -m app` if you want to register a webhook hook and receive updates with the built-in server. Otherwise start with `python -m app --polling`.

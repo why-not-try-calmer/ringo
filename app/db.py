@@ -97,20 +97,45 @@ async def deprecate_not_verified() -> DeleteResult | None:
     if busy:
         return
 
-    busy = True
-    t = timedelta(hours=6)
     now = datetime.now()
-    pred = lambda item: now - item["at"] >= t
+    h6 = timedelta(hours=6)
+    d6 = timedelta(days=6)
+
+    # Removing old 'wants_to_join' OPs
+    busy = True
+    wanted_to_join = (
+        lambda item: (now - item["at"] >= h6) and item["operation"] == "wants_to_join"
+    )
+    was_deleted = (
+        lambda item: (now - item["at"] >= d6) and item["operation"] == "deletion"
+    )
     docs = logs.find(
         {
-            "user_id": {"$exists": True},
-            "wants_to_join": {"$exists": True},
             "at": {"$exists": True},
-            "has_verified": {"$exists": False},
+            "user_id": {"$exists": True},
+            "operation": {"$exists": True},
         }
     )
-    users_ids = [u["user_id"] for u in await docs.to_list(length=None) if pred(u)]
-    busy = False
 
-    res = await logs.delete_many({"user_id": {"$in": users_ids}})
-    await log(ServiceLog("deletion", f"Deleted {res.deleted_count} user logs"))
+    to_log_removal: set[UserId] = set()
+    to_remove: set[UserId] = set()
+
+    for u in await docs.to_list(length=None):
+        uid = u["user_id"]
+        if wanted_to_join(u):
+            to_log_removal.add(uid)
+            to_remove.add(uid)
+        if was_deleted(u):
+            to_remove.add(uid)
+
+    res: DeleteResult = await logs.delete_many(
+        {"user_id": {"$in": list(to_log_removal.union(to_remove))}}
+    )
+    if res.deleted_count > 0:
+        await log(
+            ServiceLog(
+                "deletion",
+                f"Deleted {res.deleted_count} out of {len(to_log_removal)} user logs pending for deletion.",
+            )
+        )
+    busy = False
