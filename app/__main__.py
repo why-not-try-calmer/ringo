@@ -57,6 +57,8 @@ if __name__ == "__main__":
     TOKEN = environ["TOKEN"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
+    # "webhook" | "polling"
+    DEPLOYMENT = environ["DEPLOYMENT"]
 
     from asyncio import set_event_loop_policy
     from uvloop import EventLoopPolicy
@@ -69,7 +71,14 @@ if __name__ == "__main__":
     print(f"Setting webhook now. Listening to {PORT} and ready to work.")
     from os import path
 
-    if path.exists("./cert.pem") and path.exists("./private.key"):
+    if DEPLOYMENT == "polling":
+        print("Running in long-poll mode. Good luck.")
+        app.run_polling(drop_pending_updates=True)
+
+    elif path.exists("./cert.pem") and path.exists("./private.key"):
+        print(
+            "Starting webhook with a self-signed certificate. Requests to the bot will be decoded by the application."
+        )
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
@@ -80,7 +89,7 @@ if __name__ == "__main__":
         )
     else:
         print(
-            "Running without self-signed SSL certificate; your HTTPS requests will need to be decoded and encoded by the server!"
+            "Starting webhook without an SSL certificate; your HTTPS requests will need to be decoded and encoded by the server!"
         )
         app.run_webhook(
             listen="0.0.0.0",
