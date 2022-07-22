@@ -1,6 +1,7 @@
 import logging
 import warnings
 import sys
+from sys import argv, stdout
 from os import environ
 from telegram.ext import (
     Application,
@@ -14,7 +15,9 @@ from telegram.warnings import PTBUserWarning
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO,
-    stream=sys.stdout
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    stream=stdout,
 )
 warnings.filterwarnings("error", category=PTBUserWarning)
 
@@ -57,21 +60,22 @@ def registerHandlers(app: Application):
 
 
 if __name__ == "__main__":
+    from os import path
+    from asyncio import set_event_loop_policy
+    from uvloop import EventLoopPolicy
+
     TOKEN = environ["TOKEN"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
     DEPLOYMENT = strings["config"]["deployment"]
 
-    from asyncio import set_event_loop_policy
-    from uvloop import EventLoopPolicy
-
     set_event_loop_policy(EventLoopPolicy())
-
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
 
-    print(f"Setting webhook now. Listening to {PORT} and ready to work.")
-    from os import path
+    if "polling" in argv[1] if len(argv) >= 2 else False:
+        print("Running in long-poll mode. Good luck.")
+        app.run_polling(drop_pending_updates=True)
 
     if DEPLOYMENT == "polling":
         print("Running in long-poll mode. Good luck.")
@@ -79,7 +83,7 @@ if __name__ == "__main__":
 
     elif path.exists("./cert.pem") and path.exists("./private.key"):
         print(
-            "Starting webhook with a self-signed certificate. Requests to the bot will be decoded by the application."
+            f"Starting webhook on port {PORT} with a self-signed certificate. Requests to the bot will be decoded by the application."
         )
         app.run_webhook(
             listen="0.0.0.0",
@@ -91,7 +95,7 @@ if __name__ == "__main__":
         )
     else:
         print(
-            "Starting webhook without an SSL certificate; your HTTPS requests will need to be decoded and encoded by the server!"
+            "Starting webhook without on port {PORT} without an SSL certificate. HTTPS requests will need to be decoded and encoded by the server!"
         )
         app.run_webhook(
             listen="0.0.0.0",
