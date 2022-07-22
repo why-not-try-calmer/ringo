@@ -25,6 +25,7 @@ from app.handlers import (
     setting_bot,
     resetting,
     has_joined,
+    strings,
 )
 
 
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
     # "webhook" | "polling"
-    DEPLOYMENT = environ["DEPLOYMENT"]
+    DEPLOYMENT = strings["config"]["deployment"]
 
     from asyncio import set_event_loop_policy
     from uvloop import EventLoopPolicy
