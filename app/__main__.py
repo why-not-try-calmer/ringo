@@ -28,7 +28,6 @@ from app.handlers import (
     setting_bot,
     resetting,
     has_joined,
-    strings,
 )
 
 
