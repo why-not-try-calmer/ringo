@@ -88,7 +88,7 @@ class Settings(AsDict):
         return len(self.as_dict())
 
 
-Operation = Literal["wants_to_join", "has_verified", "replying_to_bot"]
+Operation = Literal["wants_to_join", "has_verified", "replying_to_bot", "deletion"]
 
 
 class UserLog(AsDict):
@@ -125,11 +125,11 @@ class UserLog(AsDict):
 
 
 class ServiceLog(AsDict):
-    operation: str
+    operation: Operation
     message: str
     at: datetime
 
-    def __init__(self, operation, message):
+    def __init__(self, operation: Operation, message):
         now = datetime.now()
         self.operation = operation
         self.message = message
