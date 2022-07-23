@@ -79,3 +79,11 @@ async def mark_excepted_coroutines(marker: Any, coroutine: Coroutine) -> Any | N
         await coroutine
     except Exception:
         return marker
+
+
+async def mark_successful_coroutines(marker: Any, coroutine: Coroutine) -> Any | None:
+    try:
+        await coroutine
+        return marker
+    except Exception:
+        return

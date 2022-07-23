@@ -57,15 +57,20 @@ def registerHandlers(app: Application):
 
 
 if __name__ == "__main__":
+    """
+    NB: Call with --polling to run as a long-polling application
+    """
+
     from os import path
-    from asyncio import set_event_loop_policy
-    from uvloop import EventLoopPolicy
+    import uvloop
 
     TOKEN = environ["TOKEN"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
+    private_key_path = "./private.key"
+    certificate_path = "./cert.pem"
 
-    set_event_loop_policy(EventLoopPolicy())
+    uvloop.install()
     app = Application.builder().token(TOKEN).build()
     registerHandlers(app)
 
@@ -73,25 +78,25 @@ if __name__ == "__main__":
         print("Running in long-poll mode. Good luck.")
         app.run_polling(drop_pending_updates=True)
 
-    elif path.exists("./cert.pem") and path.exists("./private.key"):
+    elif path.exists(certificate_path) and path.exists(private_key_path):
         print(
-            f"Starting webhook on port {PORT} with a self-signed certificate. Requests to the bot will be decoded by the application."
+            f"Starting webserver & webhook on port {PORT} with a self-signed certificate. Requests to the bot *will be* decoded by the application."
         )
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
-            url_path=TOKEN,
-            webhook_url=f"{ENDPOINT}/{TOKEN}",
-            key="private.key",
-            cert="cert.pem",
+            url_path=f"bot{TOKEN}",
+            webhook_url=f"{ENDPOINT}/bot{TOKEN}",
+            key=private_key_path[2:],
+            cert=certificate_path[2:],
         )
     else:
         print(
-            "Starting webhook without on port {PORT} without an SSL certificate. HTTPS requests will need to be decoded and encoded by the server!"
+            "Starting webserver & webhook on port {PORT} *without* an SSL certificate. HTTPS requests will need to be decoded and encoded by the server!"
         )
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
-            url_path=TOKEN,
-            webhook_url=f"{ENDPOINT}/{TOKEN}",
+            url_path=f"bot{TOKEN}",
+            webhook_url=f"{ENDPOINT}/bot{TOKEN}",
         )

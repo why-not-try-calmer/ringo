@@ -3,11 +3,12 @@ from motor.motor_asyncio import (
     AsyncIOMotorCollection,
     AsyncIOMotorDatabase,
 )
+from telegram.ext import ContextTypes
 from pymongo.collection import ReturnDocument
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from os import environ
 from datetime import datetime, timedelta
-from asyncio import sleep
+from asyncio import gather, sleep
 
 from app.types import (
     AsDict,
@@ -18,6 +19,7 @@ from app.types import (
     Settings,
     UserId,
 )
+from app.utils import mark_successful_coroutines
 
 client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
 db: AsyncIOMotorDatabase = client["alert-me"]
@@ -52,7 +54,7 @@ async def upsert_settings(settings: Settings) -> Settings | None:
 async def fetch_chat_ids() -> list[ChatId]:
     cursor = chats.find()
     users_id = []
-    for doc in await cursor.to_list(length=None):
+    async for doc in cursor:
         if "chat_id" in doc and ("changelog" not in doc or doc["changelog"] != "off"):
             users_id.append(doc["chat_id"])
     return users_id
@@ -90,52 +92,95 @@ async def log(contents: AsDict) -> InsertOneResult:
     return await logs.insert_one(contents.as_dict())
 
 
-async def deprecate_not_verified() -> DeleteResult | None:
+async def mark_notified(user_id: UserId) -> bool | None:
+    res = await logs.find_one_and_update(
+        {"user_id": user_id}, {"$set": {"notified": True}}
+    )
+    if res.modified_count > 0:
+        return True
+
+
+async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | str:
+
+    # Setup
     global busy
-    await sleep(60)
+
+    if context:
+        await sleep(60)
 
     if busy:
         return
 
     now = datetime.now()
     h6 = timedelta(hours=6)
-    d6 = timedelta(days=6)
+    min20 = timedelta(minutes=20)
 
-    # Removing old 'wants_to_join' OPs
-    busy = True
-    wanted_to_join = (
-        lambda item: (now - item["at"] >= h6) and item["operation"] == "wants_to_join"
+    due = lambda item, delt: now - item["at"] >= delt
+    tried_6h_ago_and_got_alert = (
+        lambda item: due(item, h6)
+        and item["operation"] == "wants_to_join"
+        and "notified" in item
     )
-    was_deleted = (
-        lambda item: (now - item["at"] >= d6) and item["operation"] == "deletion"
-    )
-    docs = logs.find(
-        {
-            "at": {"$exists": True},
-            "user_id": {"$exists": True},
-            "operation": {"$exists": True},
-        }
+    tried_20min_ago_and_not_alerted = (
+        lambda item: due(item, min20)
+        and item["operation"] == "wants_to_join"
+        and not "notified" in item
     )
 
-    to_log_removal: set[UserId] = set()
-    to_remove: set[UserId] = set()
+    # Action
+    try:
+        busy = True
+        cursor = logs.find(
+            {
+                "at": {"$exists": True},
+                "user_id": {"$exists": True},
+                "operation": {"$exists": True},
+            }
+        )
 
-    for u in await docs.to_list(length=None):
-        uid = u["user_id"]
-        if wanted_to_join(u):
-            to_log_removal.add(uid)
-            to_remove.add(uid)
-        if was_deleted(u):
-            to_remove.add(uid)
+        user_docs_to_remove = []
+        to_notify = []
 
-    res: DeleteResult = await logs.delete_many(
-        {"user_id": {"$in": list(to_log_removal.union(to_remove))}}
-    )
-    if res.deleted_count > 0:
+        async for u in cursor:
+
+            if tried_6h_ago_and_got_alert(u):
+                user_docs_to_remove.append(u)
+
+            if tried_20min_ago_and_not_alerted(u):
+                to_notify.append(u)
+
+        if not context:
+            busy = False
+            res = f"Users to remove: {len(user_docs_to_remove)}, to notify: {len(to_notify)}"
+            return res
+
+        # Notifying & removing
+        deleted: DeleteResult = await logs.delete_many(
+            {"user_id": {"$in": list(user_docs_to_remove)}}
+        )
+        successful_ids = await gather(
+            *[
+                mark_successful_coroutines(
+                    uid,
+                    context.bot.send_message(
+                        uid,
+                        "Hey, some 20 minutes ago I tried handle your request to join our group, perhaps you've missed it? How about scrolling up a bit? :)",
+                    ),
+                )
+                for uid in to_notify
+            ]
+        )
+        confirmed = await gather(*[mark_notified(uid) for uid in successful_ids])
+
+        # Logging
+        elapsed_time = datetime.now() - now
         await log(
             ServiceLog(
-                "deletion",
-                f"Deleted {res.deleted_count} out of {len(to_log_removal)} user logs pending for deletion.",
+                "background_task",
+                f"Job completed within {elapsed_time}, with {len(successful_ids)} notified users found late on joining, {len(confirmed)} logs edited and {deleted.deleted_count} deleted.",
             )
         )
-    busy = False
+    except Exception as error:
+        print(error)
+    finally:
+        busy = False

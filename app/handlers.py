@@ -16,7 +16,7 @@ from app.utils import (
 from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
-    deprecate_not_verified,
+    background_task,
     fetch_chat_ids,
     log,
     remove_chats,
@@ -80,7 +80,7 @@ async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Cleaning up just in case
-    create_task(deprecate_not_verified())
+    create_task(background_task(context))
 
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
