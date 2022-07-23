@@ -41,7 +41,7 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
 
 ## Tests
 
-Run test with `python -m pytest -s --asyncio-mode=strict`
+Run test with `python -m pytest -s --asyncio-mode=strict -v`
 
 ## Deploy
 

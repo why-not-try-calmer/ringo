@@ -88,7 +88,9 @@ class Settings(AsDict):
         return len(self.as_dict())
 
 
-Operation = Literal["wants_to_join", "has_verified", "replying_to_bot", "deletion"]
+Operation = Literal[
+    "wants_to_join", "has_verified", "replying_to_bot", "deletion", "background_task"
+]
 
 
 class UserLog(AsDict):
