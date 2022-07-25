@@ -1,15 +1,10 @@
-from motor.motor_asyncio import (
-    AsyncIOMotorClient,
-    AsyncIOMotorCollection,
-    AsyncIOMotorDatabase,
-)
 from telegram.ext import ContextTypes
 from pymongo.collection import ReturnDocument
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
-from os import environ
 from datetime import datetime, timedelta
 from asyncio import gather, sleep
 
+from app import chats, logs
 from app.types import (
     AsDict,
     ChatId,
@@ -21,10 +16,6 @@ from app.types import (
 )
 from app.utils import mark_successful_coroutines
 
-client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
-db: AsyncIOMotorDatabase = client["alert-me"]
-chats: AsyncIOMotorCollection = db["chats"]
-logs: AsyncIOMotorCollection = db["logs"]
 
 """ Settings """
 

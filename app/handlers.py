@@ -1,9 +1,8 @@
+from os import environ
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import create_task, gather
-from toml import loads
-from os import environ
 
 from app.types import ChatId, UserLog, Settings
 from app.utils import (
@@ -13,6 +12,7 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
+from app import strings
 from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
@@ -25,11 +25,6 @@ from app.db import (
     upsert_settings,
     reset,
 )
-
-strings = ""
-with open("strings.toml", "r") as f:
-    r = f.read()
-    strings = loads(r)
 
 
 async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -151,7 +146,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not (hasattr(update, "message") or hasattr(update.message, "reply_to_message")):
+    if not (hasattr(update, "message") and hasattr(update.message, "reply_to_message")):
         print(f"Unable to make use of this update: {update}")
         return
 
