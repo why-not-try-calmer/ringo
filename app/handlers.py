@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import create_task, gather
 
-from app.types import ChatId, UserLog, Settings
+from app.types import ChatId, UserId, UserLog, Settings
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -19,6 +19,7 @@ from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
     background_task,
+    check_if_banned,
     fetch_chat_ids,
     get_users_at,
     log,
@@ -263,10 +264,12 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for u in update.message.new_chat_members
         if update.message.new_chat_members or []
     ]
+    new_members_ids: list[UserId] = [uid for uid, _, _ in new_members]
+
     if not new_members:
         return
 
-    if context.bot.id in [uid for uid, _, _ in new_members]:
+    if context.bot.id in new_members_ids:
         # The newcomer is the bot itself
         report = ""
         if settings := await fetch_settings(chat_id):
@@ -278,9 +281,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 report = strings["has_joined"]["not_destination"]
 
             if hasattr(settings, "show_join_time") and settings.show_join_time:
-                datetimes = await get_users_at(
-                    chat_id, [uid for (uid, _, _) in new_members]
-                )
+                datetimes = await get_users_at(chat_id, new_members_ids)
                 if average_join_time := average_nb_secs(datetimes):
                     report += f" It took them {average_join_time} seconds for joining."
 
@@ -290,6 +291,29 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
     else:
         # Genuinely new users
+        # First checking if we are "pre-banning"
+        banned = await check_if_banned(chat_id, new_members_ids)
+        not_banned = [
+            (uid, uname, ulang)
+            for uid, uname, ulang in new_members
+            if uid not in banned
+        ]
+
+        if banned:
+            banned_uid_names = [
+                (uid, uname) for uid, uname, _ in new_members if uid in banned
+            ]
+            report = (
+                ", ".join(
+                    [mention_markdown(uid, name) for uid, name in banned_uid_names]
+                )
+                + "were banned during verification!"
+            )
+            await context.bot.send_message(chat_id, report)
+
+        if not not_banned:
+            return
+
         greet = (
             lambda lang: "welcome"
             if not lang in strings["welcome"]
@@ -299,7 +323,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ", ".join(
                 [
                     f"{greet(lang)} {mention_markdown(uid, name)}"
-                    for uid, name, lang in new_members
+                    for uid, name, lang in not_banned
                 ]
             )
             + "!"

@@ -5,14 +5,13 @@ from app.types import UserLog, Settings
 def test_settings():
     s = Settings("/set mode auto helper_chat_id 123 chat_url abcd")
     t = Settings({"mode": "auto", "helper_chat_id": "123", "chat_url": "abcd"})
-    assert s.as_dict() == t.as_dict()
+    assert s.as_dict() == t.as_dict() and len(t.unassigned) == 6
 
 
 def test_settings_with_verification_msg():
     s = Settings(
         "/set mode auto helper_chat_id 123 chat_url abcd verification_msg\nEspace de discussion fribourgeois basé à la Gare CFF. Convivialité et bonne humeur bienvenues! Crypto, drogues, complots et sexe bannis."
     )
-    print(s.as_dict())
     assert len(s) == 4
 
 

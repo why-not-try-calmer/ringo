@@ -46,4 +46,5 @@ async def test_settings():
 @pytest.mark.asyncio
 async def test_run_background_task():
     result = await background_task(None)
+    print(f"test_run_background: Found {result} to remove or notify.")
     assert result

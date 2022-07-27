@@ -1,17 +1,22 @@
+from os import environ
+from sqlite3 import Cursor
 from telegram.ext import ContextTypes
 from pymongo.collection import ReturnDocument
+from pymongo.typings import _DocumentType
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from datetime import datetime, timedelta
-from asyncio import gather, sleep
+from asyncio import as_completed, gather, sleep
 
 from app import chats, logs
 from app.types import (
     AsDict,
     ChatId,
+    Operation,
     ServiceLog,
     MessageId,
     ServiceLog,
     Settings,
+    User,
     UserId,
 )
 from app.utils import mark_successful_coroutines
@@ -58,27 +63,79 @@ async def remove_chats(chats_ids: list[ChatId]) -> DeleteResult:
 async def add_pending(
     chat_id: ChatId, user_id: UserId, message_id: MessageId
 ) -> UpdateResult:
+
     user_key = f"pending_{user_id}"
     payload = {"message_id": message_id, "at": datetime.now()}
     return await chats.find_one_and_update(
-        {"chat_id": chat_id},
-        {"$set": {user_key: payload}},
-        upsert=True,
+        {"chat_id": chat_id}, {"$set": {user_key: payload}}
     )
 
 
 async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
     doc = await chats.find_one_and_update(
-        {"chat_id": chat_id}, {"$unset": {f"pending_{user_id}": ""}}, upsert=True
+        {"chat_id": chat_id}, {"$unset": {f"pending_{user_id}": ""}}
     )
     return doc[f"pending_{user_id}"]["message_id"]
+
+
+async def get_banners() -> list[ChatId]:
+    banners = []
+    cursor = chats.find(
+        {"chat_id": {"$exists": True}, "ban_not_joining": {"$exists": True}}
+    )
+    async for doc in cursor:
+        if doc["ban_not_joining"] is True:
+            banners.append(doc["chat_id"])
+    return banners
 
 
 """ Logs """
 
 
+async def check_if_banned(chat_id: ChatId, user_ids: list[UserId]) -> list[UserId]:
+    cursor = logs.find(
+        {"user_id": {"$in": user_ids}, "chat_id": chat_id, "operation": "is_banned"}
+    )
+    user_ids = []
+    async for doc in cursor:
+        user_ids.append(doc["user_id"])
+    return user_ids
+
+
+async def mark_as_banned(user: User) -> UpdateResult:
+    op: Operation = "is_banned"
+    return await logs.find_one_and_update(
+        {"user_id": user.user_id, "chat_id": user.chat_id}, {"$set": {"operation": op}}
+    )
+
+
+async def preban(
+    context: ContextTypes.DEFAULT_TYPE | None, users: list[User]
+) -> tuple[list[User], list[User]] | None:
+    if not context:
+        return
+
+    async def accept_then_ban(user: User) -> tuple[bool, User]:
+        await mark_as_banned(user)
+        await context.bot.approve_chat_join_request(user.chat_id, user.user_id)
+        banned = await context.bot.ban_chat_member(user.chat_id, user.user_id)
+        return banned, user
+
+    failed_to_ban_but_invited = []
+    successfully_banned = []
+
+    for task in as_completed([accept_then_ban(u) for u in users]):
+        banned, user = await task
+        if banned:
+            successfully_banned.append(user)
+        else:
+            failed_to_ban_but_invited.append(user)
+
+    return failed_to_ban_but_invited, successfully_banned
+
+
 async def get_users_at(chat_id: ChatId, user_ids: list[UserId]) -> list[datetime]:
-    cursor = await logs.find(
+    cursor = logs.find(
         {
             "chat_id": chat_id,
             "user_id": {"$in": user_ids},
@@ -100,16 +157,14 @@ async def log(contents: AsDict) -> InsertOneResult:
     return await logs.insert_one(contents.as_dict())
 
 
-async def mark_notified(user_id: UserId) -> bool | None:
-    res = await logs.find_one_and_update(
-        {"user_id": user_id}, {"$set": {"notified": True}}
-    )
-    if res.modified_count > 0:
-        return True
+async def mark_notified(user: User) -> User | None:
+    if _ := await logs.update_many(
+        {"user_id": user.user_id, "chat_id": user.chat_id}, {"$set": {"notified": True}}
+    ):
+        return user
 
 
-async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | str:
-
+async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | int:
     # Setup
     global busy
 
@@ -135,60 +190,96 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | s
         and not "notified" in item
     )
 
-    # Action
+    # Preparing query
     try:
         busy = True
+        to_remove: list[User] = []
+        to_notify: list[User] = []
+        to_ban: list[User] = []
+        banners = await get_banners()
+        is_banned: Operation = "is_banned"
         cursor = logs.find(
             {
                 "at": {"$exists": True},
                 "user_id": {"$exists": True},
+                "chat_id": {"$exists": True},
                 "operation": {"$exists": True},
             }
         )
 
-        user_docs_to_remove = []
-        to_notify = []
-
+        # Collecting results
         async for u in cursor:
-
-            if tried_6h_ago_and_got_alert(u):
-                user_docs_to_remove.append(u)
-
+            if u["operation"] == is_banned:
+                continue
             if tried_20min_ago_and_not_alerted(u):
-                to_notify.append(u)
+                to_notify.append(User(u["user_id"], u["chat_id"]))
+            if tried_6h_ago_and_got_alert(u):
+                if u["chat_id"] in banners:
+                    to_ban.append(User(u["user_id"], u["chat_id"]))
+                else:
+                    to_remove.append(User(u["user_id"], u["chat_id"]))
 
+        # Only for testing purposes
         if not context:
             busy = False
-            res = f"Users to remove: {len(user_docs_to_remove)}, to notify: {len(to_notify)}"
-            return res
+            return len(to_remove) + len(to_notify)
 
-        # Notifying & removing
+        # Removing & notifying
         deleted: DeleteResult = await logs.delete_many(
-            {"user_id": {"$in": list(user_docs_to_remove)}}
+            {
+                "user_id": {"$in": [u.user_id for u in to_remove]},
+                "chat_id": {"$in": [u.chat_id for u in to_remove]},
+            }
         )
-        successful_ids = await gather(
+        successfully_notified = await gather(
             *[
                 mark_successful_coroutines(
-                    uid,
+                    user,
                     context.bot.send_message(
-                        uid,
+                        user.user_id,
                         "Hey, some 20 minutes ago I tried handle your request to join our group, perhaps you've missed it? How about scrolling up a bit? :)",
                     ),
                 )
-                for uid in to_notify
+                for user in to_notify
             ]
         )
-        confirmed = await gather(*[mark_notified(uid) for uid in successful_ids])
+        confirmed_notified = await gather(
+            *[mark_notified(user) for user in successfully_notified]
+        )
+
+        # Banning & notifying
+        banning_report_failed = ""
+        banning_report_success = ""
+
+        if mb_banned := await preban(context, to_ban):
+            failed_to_ban, confirmed_banned = mb_banned
+            banning_report_failed += "\n".join(
+                [
+                    f" Failed to banned: {u.user_id} from {u.chat_id}."
+                    for u in failed_to_ban
+                ]
+            )
+            banning_report_success += "\n".join(
+                [
+                    f" Successfully banned: {u.user_id} from {u.chat_id}."
+                    for u in confirmed_banned
+                ]
+            )
 
         # Logging
         elapsed_time = datetime.now() - now
         await log(
             ServiceLog(
                 "background_task",
-                f"Job completed within {elapsed_time}, with {len(successful_ids)} notified users found late on joining, {len(confirmed)} logs edited and {deleted.deleted_count} deleted.",
+                f"Job completed within {elapsed_time}, with {len(successfully_notified)} notified users found late on joining, {len(confirmed_notified)} logs edited and {deleted.deleted_count} deleted."
+                + banning_report_failed
+                + banning_report_success,
             )
         )
     except Exception as error:
-        print(error)
+        if context:
+            await context.bot.send_message(environ["ADMIN"], str(error))
+        else:
+            print(error)
     finally:
         busy = False
