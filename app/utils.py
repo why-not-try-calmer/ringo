@@ -1,8 +1,16 @@
+from datetime import datetime
 from typing import Any, Callable, Coroutine
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.types import ChatId, UserId
+
+
+def average_nb_secs(datetimes: list[datetime]) -> None | int:
+    if datetimes:
+        now = datetime.now()
+        deltas = [(now - d).total_seconds() for d in datetimes]
+        return int(sum(deltas) / len(deltas))
 
 
 def mention_markdown(user_id: UserId, username: str) -> str:

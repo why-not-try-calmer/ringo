@@ -76,6 +76,23 @@ async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
 
 """ Logs """
 
+
+async def get_users_at(chat_id: ChatId, user_ids: list[UserId]) -> list[datetime]:
+    cursor = await logs.find(
+        {
+            "chat_id": chat_id,
+            "user_id": {"$in": user_ids},
+            "at": {"$exists": True},
+            "has_joined": {"$exists": False},
+            "joined_at": {"$exists": False},
+        }
+    )
+    datetimes = []
+    async for user_doc in cursor:
+        datetimes.append(user_doc["at"])
+    return datetimes
+
+
 busy = False
 
 

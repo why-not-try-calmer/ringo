@@ -1,3 +1,4 @@
+from functools import reduce
 from os import environ
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -9,6 +10,7 @@ from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
+    average_nb_secs,
     mention_markdown,
     withAuth,
 )
@@ -18,6 +20,7 @@ from app.db import (
     add_pending,
     background_task,
     fetch_chat_ids,
+    get_users_at,
     log,
     remove_chats,
     remove_pending,
@@ -273,6 +276,14 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 report = strings["has_joined"]["not_destination"]
+
+            if hasattr(settings, "show_join_time") and settings.show_join_time:
+                datetimes = await get_users_at(
+                    chat_id, [uid for (uid, _, _) in new_members]
+                )
+                if average_join_time := average_nb_secs(datetimes):
+                    report += f" It took them {average_join_time} seconds for joining."
+
             if settings.helper_chat_id:
                 await context.bot.send_message(
                     settings.helper_chat_id, report, disable_web_page_preview=True

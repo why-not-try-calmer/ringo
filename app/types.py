@@ -22,6 +22,7 @@ class Settings(AsDict):
     verification_msg: Optional[str] = None
     changelog: Optional[str] = None
     active: Optional[str] = None
+    show_join_time: Optional[str] = None
 
     def __init__(self, settings: dict | str, chat_id: Optional[int | str] = None):
         clean_string_array = []
@@ -49,6 +50,7 @@ class Settings(AsDict):
                 "mode",
                 "changelog",
                 "active",
+                "show_join_time",
             } and not (v == "None" or v is None):
                 setattr(self, k, v if isinstance(v, str) else str(v))
 
