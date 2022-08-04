@@ -47,4 +47,4 @@ async def test_settings():
 async def test_run_background_task():
     result = await background_task(None)
     print(f"test_run_background: Found {result} to remove or notify.")
-    assert result
+    assert result is not None
