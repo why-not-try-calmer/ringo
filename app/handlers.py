@@ -304,12 +304,12 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 (uid, uname) for uid, uname, _ in new_members if uid in banned
             ]
             report = (
-                ", ".join(
-                    [mention_markdown(uid, name) for uid, name in banned_uid_names]
-                )
-                + "were banned during verification!"
+                "".join([mention_markdown(uid, name) for uid, name in banned_uid_names])
+                + " were banned during verification!"
             )
-            await context.bot.send_message(chat_id, report)
+            await context.bot.send_message(
+                chat_id, report, parse_mode=ParseMode.MARKDOWN
+            )
 
         if not not_banned:
             return
