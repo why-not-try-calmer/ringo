@@ -1,5 +1,6 @@
 from os import environ
 from sqlite3 import Cursor
+from typing import Optional
 from telegram.ext import ContextTypes
 from pymongo.collection import ReturnDocument
 from pymongo.typings import _DocumentType
@@ -100,6 +101,18 @@ async def check_if_banned(chat_id: ChatId, user_ids: list[UserId]) -> list[UserI
     async for doc in cursor:
         user_ids.append(doc["user_id"])
     return user_ids
+
+
+async def remove_old_logs(now: Optional[datetime] = None) -> DeleteResult:
+    if not now:
+        now = datetime.now()
+
+    operation: Operation = "background_task"
+    t0 = now - timedelta(days=7)
+
+    return await logs.delete_many(
+        {"operation": {"$ne": operation}}, {"at": {"$lt": t0}}
+    )
 
 
 async def mark_as_banned(user: User) -> UpdateResult:
@@ -276,6 +289,10 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
                 + banning_report_success,
             )
         )
+
+        # Removing old entries
+        await remove_old_logs()
+
     except Exception as error:
         if context:
             await context.bot.send_message(environ["ADMIN"], str(error))
