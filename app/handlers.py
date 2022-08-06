@@ -1,11 +1,19 @@
-from functools import reduce
 from os import environ
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import create_task, gather
 
-from app.types import ChatId, UserId, UserLog, Settings
+from app.types import (
+    ChatId,
+    Questionnaire,
+    Mode,
+    UserId,
+    UserLog,
+    Settings,
+    parse_to_questionnaire,
+    render_questionnaire,
+)
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -14,7 +22,7 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
-from app import strings
+from app import strings, dialog_manager
 from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
@@ -26,6 +34,7 @@ from app.db import (
     remove_chats,
     remove_pending,
     fetch_settings,
+    upsert_questionnaire,
     upsert_settings,
     reset,
 )
@@ -55,7 +64,37 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif settings := Settings(received, chat_id):
         # Set
         if updated := await upsert_settings(settings):
-            reply = strings["settings"]["updated"] + updated.render(with_alert=True)
+            questionnaire: Mode = "questionnaire"
+
+            # Setting up context for receiving Questionnaire settings
+            if settings.mode == questionnaire:
+                convo = Questionnaire(
+                    None,
+                    "Please send an introduction to be sent before the actual questions",
+                    None,
+                )
+                # Closure to extract the results of the questionnaire
+                async def extractor_closure(answers: list[str]):
+                    reply = ""
+                    if q := parse_to_questionnaire(answers[0]):
+                        result = await upsert_questionnaire(chat_id, q)
+
+                        if result.matched_count == 1:
+                            reply = (
+                                "Thanks, the questionnaire reads:\n"
+                                + render_questionnaire(q)
+                            )
+                        else:
+                            reply = "Failed to update the database, please try again"
+
+                        await context.bot.send_message(chat_id, reply)
+
+                # Setting up handler to grab the reply
+                dialog_manager.add(
+                    update.message.from_user.id, chat_id, convo, extractor_closure
+                )
+            else:
+                reply = strings["settings"]["updated"] + updated.render(with_alert=True)
         else:
             reply = strings["settings"]["failed_to_update"]
     else:
@@ -354,3 +393,18 @@ async def admin_op(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     )
     await remove_chats([f for f in failures if f is not None])
+
+
+async def dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    text = update.message.text
+
+    if "/cancel" in text:
+        dialog_manager.cancel(user_id)
+        user_id = update.message.from_user.id
+        reply = "Okay, starting over"
+        return await context.bot.send_message(user_id, reply)
+
+    if dialog := dialog_manager[user_id]:
+        if reply := dialog.take_reply(text):
+            await context.bot.send_message(user_id, reply)

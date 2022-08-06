@@ -3,7 +3,10 @@ from typing import Any, Callable, Coroutine
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.types import ChatId, UserId
+from app.types import (
+    ChatId,
+    UserId,
+)
 
 
 def average_nb_secs(datetimes: list[datetime]) -> None | int:

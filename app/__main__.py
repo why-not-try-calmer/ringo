@@ -1,6 +1,4 @@
-import logging
-import warnings
-from sys import argv, stdout
+from sys import argv
 from os import environ
 from telegram.ext import (
     Application,
@@ -10,17 +8,12 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
-from telegram.warnings import PTBUserWarning
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    stream=stdout,
-)
-warnings.filterwarnings("error", category=PTBUserWarning)
+from telegram.ext.filters import MessageFilter
+from telegram import Message
 
 from app.handlers import (
     admin_op,
+    dialog,
     replying_to_bot,
     wants_to_join,
     processing_cbq,
@@ -29,9 +22,18 @@ from app.handlers import (
     resetting,
     has_joined,
 )
+from app import dialog_manager
+
+
+class Dialog(MessageFilter):
+    """Custom filter"""
+
+    def filter(self, message: Message) -> bool:
+        return hasattr(message, "text") and message.from_user.id in dialog_manager
 
 
 def registerHandlers(app: Application):
+    handleConversation = MessageHandler(Dialog(), dialog)
     joinReqHandler = ChatJoinRequestHandler(wants_to_join)
     acceptReject = CallbackQueryHandler(processing_cbq)
     answerHelp = CommandHandler(["help", "start"], answering_help)
@@ -51,6 +53,7 @@ def registerHandlers(app: Application):
             reset,
             replyToBot,
             adminOp,
+            handleConversation,
         ]
     )
     print("Handlers successfully registered")
@@ -58,7 +61,7 @@ def registerHandlers(app: Application):
 
 if __name__ == "__main__":
     """
-    NB: Call with --polling to run as a long-polling application
+    Run the program with `--polling` to run as a long-polling application
     """
 
     from os import path

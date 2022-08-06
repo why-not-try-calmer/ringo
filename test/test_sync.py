@@ -1,5 +1,11 @@
 from toml import loads
-from app.types import UserLog, Settings
+from app.types import (
+    Questionnaire,
+    Dialog,
+    DialogManager,
+    UserLog,
+    Settings,
+)
 
 
 def test_settings():
@@ -31,3 +37,27 @@ def test_string():
 def test_log():
     l = UserLog("wants_to_join", 1, 1, "my_name")
     assert len(l.as_dict()) == 5
+
+
+def test_conversation():
+    fake_extractor = lambda state: print(state)
+    conv = Dialog(0, 0, Questionnaire("intro", ["q1"], "outro"), fake_extractor)
+    conv._next_q()
+    for _ in conv.questions:
+        conv._next_q("answer")
+    assert len(conv.answers) == len(conv.questions)
+
+
+def test_conversations():
+    conv = Questionnaire("intro", ["q1"], "outro")
+    convs = DialogManager()
+    fake_extractor = lambda state: print(f"Extractor reporting about {state}")
+    convs.add(1, 1, conv, fake_extractor)
+    conv = convs[1]
+    assert conv
+
+    conv.take_reply()
+    for _ in conv.questions:
+        conv.take_reply("answer")
+    assert conv.done
+    assert len(conv.questions) == 1

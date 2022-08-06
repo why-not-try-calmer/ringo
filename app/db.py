@@ -1,9 +1,7 @@
 from os import environ
-from sqlite3 import Cursor
 from typing import Optional
 from telegram.ext import ContextTypes
 from pymongo.collection import ReturnDocument
-from pymongo.typings import _DocumentType
 from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
 from datetime import datetime, timedelta
 from asyncio import as_completed, gather, sleep
@@ -12,6 +10,7 @@ from app import chats, logs
 from app.types import (
     AsDict,
     ChatId,
+    Questionnaire,
     Operation,
     ServiceLog,
     MessageId,
@@ -43,6 +42,14 @@ async def upsert_settings(settings: Settings) -> Settings | None:
         return_document=ReturnDocument.AFTER,
     ):
         return Settings(updated)
+
+
+async def upsert_questionnaire(
+    chat_id: ChatId, conversation: Questionnaire
+) -> UpdateResult:
+    return await chats.find_one_and_update(
+        {"chat_id": chat_id}, {"conversation": conversation._asdict()}
+    )
 
 
 """ Chats """
