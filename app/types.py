@@ -286,6 +286,7 @@ class Dialog:
                 create_task(self._extract_answers(self.answers))
             else:
                 self._extract_answers(self.answers)
+
         except RuntimeError:
             self._extract_answers(self.answers)
 
