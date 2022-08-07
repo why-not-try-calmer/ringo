@@ -1,11 +1,20 @@
-from functools import reduce
 from os import environ
+from typing import Any, Coroutine
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
 from asyncio import create_task, gather
 
-from app.types import ChatId, UserId, UserLog, Settings
+from app.types import (
+    ChatId,
+    Dialog,
+    Questionnaire,
+    Mode,
+    Reply,
+    UserId,
+    UserLog,
+    Settings,
+)
 from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
@@ -14,7 +23,7 @@ from app.utils import (
     mention_markdown,
     withAuth,
 )
-from app import strings
+from app import strings, dialog_manager
 from app.utils import mark_excepted_coroutines
 from app.db import (
     add_pending,
@@ -26,6 +35,7 @@ from app.db import (
     remove_chats,
     remove_pending,
     fetch_settings,
+    upsert_questionnaire,
     upsert_settings,
     reset,
 )
@@ -55,7 +65,39 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif settings := Settings(received, chat_id):
         # Set
         if updated := await upsert_settings(settings):
-            reply = strings["settings"]["updated"] + updated.render(with_alert=True)
+            questionnaire: Mode = "questionnaire"
+
+            # Setting up context for receiving Questionnaire settings
+            if settings.mode == questionnaire:
+
+                async def extractor_closure(
+                    answers: list[str] | str,
+                ):
+                    # Closure to extract the results of the questionnaire
+                    rep = ""
+
+                    if q := Questionnaire.parse(answers):
+                        await upsert_questionnaire(chat_id, q)
+                        rep = "Thanks, the questionnaire reads:\n" + q.render()
+
+                    else:
+                        rep = "Failed to parse your message into a valid questionnaire. Please start over."
+
+                    await context.bot.send_message(chat_id, rep)
+
+                # Setting up state to detect the reply
+                user_id = update.message.from_user.id
+                dialog_manager.add(
+                    user_id,
+                    Reply(
+                        user_id,
+                        chat_id,
+                        extractor_closure,
+                    ),
+                )
+                reply = "Please *reply* to this message with an intro, questions, and an outro, separating each parts with a single linebreak. Example:\n_Intro_. This is my intro.\n_Q1_. This is a question.\n_Q2_.This is another question.\n_Outro_. This is the outro."
+            else:
+                reply = strings["settings"]["updated"] + updated.render(with_alert=True)
         else:
             reply = strings["settings"]["failed_to_update"]
     else:
@@ -228,20 +270,24 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Manual mode
     # Handling verdict
     reply = ""
-    if operation == "accept":
-        response = await context.bot.approve_chat_join_request(chat_id, user_id)
-        if response:
-            reply = f"{user_name} accepted to {chat_id_str} by {admin_name}"
-        else:
-            reply = "User already approved"
-    elif operation == "reject":
-        response = await context.bot.decline_chat_join_request(chat_id, user_id)
-        if response:
-            reply = f"{user_name} denied access to {chat_id_str} by {admin_name}"
-        else:
-            reply = "User already denied."
-    else:
-        return
+
+    match operation:
+
+        case "accept":
+            response = await context.bot.approve_chat_join_request(chat_id, user_id)
+            if response:
+                reply = f"{user_name} accepted to {chat_id_str} by {admin_name}"
+            else:
+                reply = "User already approved"
+
+        case "reject":
+            response = await context.bot.decline_chat_join_request(chat_id, user_id)
+            if response:
+                reply = f"{user_name} denied access to {chat_id_str} by {admin_name}"
+            else:
+                reply = "User already denied."
+        case _:
+            return
 
     # Manual mode
     # Confirmation and cleaning behind on accepted or rejected
@@ -272,6 +318,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.bot.id in new_members_ids:
         # The newcomer is the bot itself
         report = ""
+
         if settings := await fetch_settings(chat_id):
             if getattr(settings, "helper_chat_id"):
                 report = (
@@ -354,3 +401,29 @@ async def admin_op(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     )
     await remove_chats([f for f in failures if f is not None])
+
+
+async def expected_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    text = update.message.text
+
+    if "/cancel" in text:
+
+        dialog_manager.cancel(user_id)
+        user_id = update.message.from_user.id
+        reply = "Okay, starting over"
+        return await context.bot.send_message(user_id, reply)
+
+    if dialog := dialog_manager[user_id]:
+
+        match dialog:
+
+            case Dialog():
+                if reply := dialog.take_reply(text):
+                    await context.bot.send_message(user_id, reply)
+                elif dialog.done:
+                    dialog_manager.remove(user_id)
+
+            case Reply():
+                await dialog.extractor(text)
+                dialog_manager.remove(user_id)
