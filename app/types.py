@@ -294,7 +294,9 @@ class Dialog:
         # Dialog has not begun yet
         if not self.has_started:
             self.start()
-            return self.intro
+
+            if self.intro:
+                return self.intro
 
         # Dialog has begun, continue
         reply = self._next_q(answer)
