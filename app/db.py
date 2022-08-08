@@ -229,12 +229,16 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
         # Collecting results
         async for u in cursor:
+
             if u["operation"] == is_banned:
                 continue
+
             if tried_20min_ago_and_not_alerted(u):
                 to_notify.append(User(u["user_id"], u["chat_id"]))
+
             if tried_6h_ago_and_got_alert(u):
-                if u["chat_id"] in banners:
+
+                if u["chat_id"] in banners and not is_banned in u:
                     to_ban.append(User(u["user_id"], u["chat_id"]))
                 else:
                     to_remove.append(User(u["user_id"], u["chat_id"]))
@@ -301,9 +305,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         await remove_old_logs()
 
     except Exception as error:
-        # Filtering out 'Hide_requested_missing' typically raised when
-        # the application is accepting someone no longer pending.
-        if context and str(error) != "Hide_requester_missing":
+        if context:
             await context.bot.send_message(environ["ADMIN"], str(error))
         else:
             print(error)
