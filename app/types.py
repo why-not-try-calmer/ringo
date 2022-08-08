@@ -35,14 +35,15 @@ Settings_keys = {
     "verification_msg",
     "mode",
     "changelog",
-    "active",
+    "paused",
     "show_join_time",
     "ban_not_joining",
+    "questionnaire",
 }
 
 Settings_boolean_keys = {
     "changelog",
-    "active",
+    "paused",
     "show_join_time",
     "ban_not_joining",
 }
@@ -63,11 +64,11 @@ class Questionnaire(NamedTuple):
             return Questionnaire(splitted[0], splitted[1:-1], splitted[-1])
 
     def render(self) -> str:
-        sep = "\n---\n\n"
+        sep_title = "\n---\n"
+        sep_sections = "\n\n"
         questions = "\n".join(f"{n+1}. {q}" for n, q in enumerate(self.questions))
-        return (
-            f"Intro{sep}{self.intro}\nQuestions{sep}{questions}\nOutro{sep}{self.outro}"
-        )
+        output = f"Intro{sep_title}{self.intro}{sep_sections}Questions{sep_title}{questions}{sep_sections}Outro{sep_title}{self.outro}"
+        return "\n" + output
 
 
 class Settings(AsDict):
@@ -77,10 +78,10 @@ class Settings(AsDict):
     helper_chat_id: Optional[ChatId] = None
     verification_msg: Optional[str] = None
     changelog: Optional[bool] = None
-    active: Optional[bool] = None
+    paused: Optional[bool] = None
     show_join_time: Optional[bool] = None
     ban_not_joining: Optional[bool] = None
-    conversation: Optional[Questionnaire] = None
+    questionnaire: Optional[Questionnaire] = None
 
     def __init__(self, settings: dict | str, chat_id: Optional[int | str] = None):
         # Receives dict from MongoDB, str from Telegram
@@ -102,7 +103,7 @@ class Settings(AsDict):
 
         for k, v in d.items():
             if k in Settings_keys and not (v == "None" or v is None):
-                value: bool | str = ""
+                value: bool | str | Questionnaire | None = None
                 if k in Settings_boolean_keys:
                     match v:
                         case "True" | "true" | "on" | "enabled":
@@ -112,8 +113,8 @@ class Settings(AsDict):
                         case _:
                             value = v
 
-                elif k == "conversation" and isinstance(v, dict):
-                    self.questionnaire = Questionnaire(**v)
+                elif k == "questionnaire" and isinstance(v, dict):
+                    value = Questionnaire(**v)
 
                 else:
                     value = v
@@ -133,11 +134,15 @@ class Settings(AsDict):
         d = self.as_dict()
 
         def pretty_bool_str(v: Any) -> str:
-            if isinstance(v, bool):
-                return "on" if v is True else "off"
-            if isinstance(v, Questionnaire):
-                return v.render()
-            return str(v)
+            match v:
+                case Questionnaire():
+                    return v.render()
+                case True:
+                    return "on"
+                case False:
+                    return "off"
+                case _:
+                    return v if isinstance(v, str) else str(v)
 
         if with_alert:
 
@@ -233,7 +238,7 @@ User = namedtuple("User", ["user_id", "chat_id"])
 
 """" Conversation handler to replace the garbage ConversationHandler from the library"""
 
-Extractor: TypeAlias = Callable[[list[str] | str], Coroutine]
+Extractor: TypeAlias = Callable[[list[str] | str], Coroutine[Any, Any, None]]
 
 
 class Dialog:
@@ -250,7 +255,7 @@ class Dialog:
 
     answers: list[str]
     it: Iterator[str]
-    extract_state: Extractor
+    extractor: Extractor
     has_started: bool
 
     def __init__(
@@ -269,7 +274,7 @@ class Dialog:
 
         self.answers = []
         self.it = iter(self.questions)
-        self._extract_answers = extract_answers
+        self.extractor = extract_answers
         self.has_started = False
 
     def _next_q(self, answer: Optional[str] = None) -> str | None:
@@ -293,15 +298,16 @@ class Dialog:
         self.answers = []
 
     def extract_answers(self):
+        # Schedules async callback
         try:
             loop = get_running_loop()
             if loop.is_running:
-                create_task(self._extract_answers(self.answers))
+                create_task(self.extractor(self.answers))
             else:
-                self._extract_answers(self.answers)
+                print(f"Mock extracting{self.answers}")
 
         except RuntimeError:
-            self._extract_answers(self.answers)
+            print(f"Mock extracting:{self.answers}")
 
     def take_reply(self, answer: Optional[str] = None) -> None | str:
         # Dialog has not begun yet
@@ -363,10 +369,16 @@ class DialogManager(OrderedDict):
         interaction: Interaction,
     ):
         self.__setitem__(user_id, interaction)
+        print(
+            f"DialogManager: Added {user_id}. Currently expecting {len(self)} users: {list(self.keys())}"
+        )
 
     def remove(self, user_id: UserId):
         if user_id in self:
             self.__delitem__(user_id)
+            print(
+                f"DialogManager: Removed {user_id}. Currently expecting {len(self)} users: {list(self.keys())}"
+            )
 
     def cancel(self, user_id: UserId):
         if dialog := self[user_id]:

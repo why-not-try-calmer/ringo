@@ -44,11 +44,9 @@ async def upsert_settings(settings: Settings) -> Settings | None:
         return Settings(updated)
 
 
-async def upsert_questionnaire(
-    chat_id: ChatId, conversation: Questionnaire
-) -> UpdateResult:
+async def upsert_questionnaire(chat_id: ChatId, q: Questionnaire) -> UpdateResult:
     return await chats.find_one_and_update(
-        {"chat_id": chat_id}, {"$set": {"conversation": conversation._asdict()}}
+        {"chat_id": chat_id}, {"$set": {"questionnaire": q._asdict()}}
     )
 
 
@@ -79,11 +77,12 @@ async def add_pending(
     )
 
 
-async def remove_pending(chat_id: ChatId, user_id: UserId) -> int:
+async def remove_pending(chat_id: ChatId, user_id: UserId) -> None | int:
     doc = await chats.find_one_and_update(
         {"chat_id": chat_id}, {"$unset": {f"pending_{user_id}": ""}}
     )
-    return doc[f"pending_{user_id}"]["message_id"]
+    if f"pending_{user_id}" in doc:
+        return doc[f"pending_{user_id}"]["message_id"]
 
 
 async def get_banners() -> list[ChatId]:
@@ -238,7 +237,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
             if tried_6h_ago_and_got_alert(u):
 
-                if u["chat_id"] in banners and not is_banned in u:
+                if u["chat_id"] in banners:
                     to_ban.append(User(u["user_id"], u["chat_id"]))
                 else:
                     to_remove.append(User(u["user_id"], u["chat_id"]))
@@ -274,6 +273,11 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         # Banning & notifying
         banning_report_failed = ""
         banning_report_success = ""
+
+        if to_ban:
+            await context.bot.send_message(
+                environ["ADMIN"], f"Banning these users: {str(to_ban)}"
+            )
 
         if mb_banned := await preban(context, to_ban):
             failed_to_ban, confirmed_banned = mb_banned

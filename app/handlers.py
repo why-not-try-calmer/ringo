@@ -1,8 +1,8 @@
 from os import environ
-from typing import Any, Coroutine
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode, ChatType
+from telegram.helpers import escape_markdown
 from asyncio import create_task, gather
 
 from app.types import (
@@ -142,53 +142,94 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id, strings["settings"]["missing"], disable_web_page_preview=True
         )
 
-    # Inactive
-    if hasattr(settings, "active") and settings.active == "off":
+    # Paused
+    if hasattr(settings, "paused") and settings.paused:
         return
 
-    # Auto mode
-    if hasattr(settings, "mode") and settings.mode == "auto":
-        await gather(
-            context.bot.send_message(
-                user_id,
-                settings.verification_msg
-                if settings.verification_msg and len(settings.verification_msg) >= 10
-                else strings["wants_to_join"]["verification_msg"],
-                disable_web_page_preview=True,
-                reply_markup=agree_btn(
-                    strings["wants_to_join"]["ok"],
-                    chat_id,
-                    strings["chat"]["url"]
-                    if not settings.chat_url
-                    else settings.chat_url,
-                ),
-            ),
-            log(UserLog("wants_to_join", chat_id, user_id, user_name)),
-        )
-        return
+    if hasattr(settings, "mode"):
 
-    # Manual mode
-    async def closure_send(destination: ChatId, text: str):
-        response = await context.bot.send_message(
-            destination,
-            text,
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True,
-            reply_markup=accept_or_reject_btns(
-                user_id,
-                user_name,
-                chat_id,
-                strings["chat"]["url"] if not settings.chat_url else settings.chat_url,
-            ),
-        )
-        await add_pending(chat_id, user_id, response.message_id)
+        match settings.mode:
 
-    if hasattr(settings, "helper_chat_id") and settings.helper_chat_id:
-        body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
-        await closure_send(settings.helper_chat_id, alert + "\n" + body)
-    else:
-        body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
-        await closure_send(chat_id, alert + "\n" + body)
+            case "auto":
+                await gather(
+                    context.bot.send_message(
+                        user_id,
+                        settings.verification_msg
+                        if settings.verification_msg
+                        and len(settings.verification_msg) >= 10
+                        else strings["wants_to_join"]["verification_msg"],
+                        disable_web_page_preview=True,
+                        reply_markup=agree_btn(
+                            strings["wants_to_join"]["ok"],
+                            chat_id,
+                            strings["chat"]["url"]
+                            if not settings.chat_url
+                            else settings.chat_url,
+                        ),
+                    ),
+                    log(UserLog("wants_to_join", chat_id, user_id, user_name)),
+                )
+
+            case "manual":
+
+                async def closure_send(destination: ChatId, text: str):
+                    response = await context.bot.send_message(
+                        destination,
+                        text,
+                        parse_mode=ParseMode.MARKDOWN,
+                        disable_web_page_preview=True,
+                        reply_markup=accept_or_reject_btns(
+                            user_id,
+                            user_name,
+                            chat_id,
+                            strings["chat"]["url"]
+                            if not settings.chat_url
+                            else settings.chat_url,
+                        ),
+                    )
+                    await add_pending(chat_id, user_id, response.message_id)
+
+                if hasattr(settings, "helper_chat_id") and settings.helper_chat_id:
+                    body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
+                    await closure_send(settings.helper_chat_id, alert + "\n" + body)
+                else:
+                    body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
+                    await closure_send(chat_id, alert + "\n" + body)
+
+            case "questionnaire":
+
+                if q := settings.questionnaire:
+
+                    questions = q.questions
+
+                    async def extractor_closure(answers: list[str]) -> None:
+                        q_a = "\n".join(
+                            [
+                                f"Question: {escape_markdown(q)} => Answer: {escape_markdown(a)}"
+                                for q, a in zip(questions, answers)
+                            ]
+                        )
+                        reply = f"@{mention_markdown(user_id, user_name)} has just requested to join this chat. Their answers to the questionnaire are as follows:\n{escape_markdown(q_a)}"
+                        keyboard = accept_or_reject_btns(
+                            user_id, user_name, chat_id, ""
+                        )
+                        await context.bot.send_message(
+                            chat_id,
+                            reply,
+                            reply_markup=keyboard,
+                            parse_mode=ParseMode.MARKDOWN,
+                        )
+
+                    dialog = Dialog(user_id, chat_id, q, extractor_closure)
+                    dialog.start()
+                    reply = dialog.take_reply()
+                    dialog_manager.add(user_id, dialog)
+                    await context.bot.send_message(
+                        user_id, dialog.intro + ("\n" + reply) if reply else ""
+                    )
+
+            case _:
+                return
 
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -256,7 +297,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Manual mode
+    # Manual or questionnaire mode
     # Setting up verdict handling
     user_id_str, user_name = splitted[3], splitted[4]
     user_id = int(user_id_str)
@@ -292,8 +333,8 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Manual mode
     # Confirmation and cleaning behind on accepted or rejected
     async def closure_together():
-        message_id = await remove_pending(chat_id, user_id)
-        await context.bot.delete_message(confirmation_chat_id, message_id)
+        if message_id := await remove_pending(chat_id, user_id):
+            await context.bot.delete_message(confirmation_chat_id, message_id)
 
     await gather(
         context.bot.send_message(

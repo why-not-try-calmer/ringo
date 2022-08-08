@@ -35,7 +35,7 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     /set mode auto verification_message
     Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. 
     ```
-    - `active <on | off>`: _off_ pauses the bot for this chat, _on_ makes it active
+    - `paused <on | off>`: _off_ pauses the bot for this chat, _off_ makes it active
     - `show_join_time <on | off>`: _off_ does not show the time it took for a user to join the target chat after being sent an invite, _on_ shows it
     - `changelog < on | off>`: _off_ lets you opt-out of changelog notification messages
 - `/reset` (no parameter): resets the bot to its default settings relative to chat(s) you manage.

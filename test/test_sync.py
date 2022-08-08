@@ -11,7 +11,7 @@ from app.types import (
 def test_settings():
     s = Settings("/set mode auto helper_chat_id 123 chat_url abcd")
     t = Settings({"mode": "auto", "helper_chat_id": "123", "chat_url": "abcd"})
-    assert s.as_dict() == t.as_dict() and len(t.unassigned) == 6
+    assert s.as_dict() == t.as_dict() and len(t.unassigned) == 7
 
 
 def test_settings_with_verification_msg():
@@ -66,3 +66,23 @@ def test_dialog_manager():
             conv.take_reply("answer")
         assert conv.done
         assert len(conv.questions) == 1
+
+
+def test_questionnaire_from_db():
+    d = {
+        "questionnaire": {
+            "intro": "Intro. This is my intro.",
+            "questions": ["Q1. This is a question.", "Q2.This is another question."],
+            "outro": "Outro. This is the outro.",
+        }
+    }
+
+    settings = Settings(d)
+    assert hasattr(settings, "questionnaire")
+
+    questionnaire = settings.questionnaire
+    assert questionnaire
+
+    rendered = questionnaire.render()
+    print(rendered)
+    assert rendered
