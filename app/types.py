@@ -233,6 +233,8 @@ class ServiceLog(AsDict):
         self.at = now
 
 
+Log: TypeAlias = UserLog | ServiceLog
+
 User = namedtuple("User", ["user_id", "chat_id"])
 
 

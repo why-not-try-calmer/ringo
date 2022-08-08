@@ -10,6 +10,7 @@ from app import chats, logs
 from app.types import (
     AsDict,
     ChatId,
+    Log,
     Questionnaire,
     Operation,
     ServiceLog,
@@ -18,6 +19,7 @@ from app.types import (
     Settings,
     User,
     UserId,
+    UserLog,
 )
 from app.utils import mark_successful_coroutines
 
@@ -46,7 +48,7 @@ async def upsert_settings(settings: Settings) -> Settings | None:
 
 async def upsert_questionnaire(chat_id: ChatId, q: Questionnaire) -> UpdateResult:
     return await chats.find_one_and_update(
-        {"chat_id": chat_id}, {"$set": {"questionnaire": q._asdict()}}
+        {"chat_id": chat_id}, {"$set": {"questionnaire": q._asdict()}}, upsert=True
     )
 
 
@@ -169,11 +171,16 @@ async def get_users_at(chat_id: ChatId, user_ids: list[UserId]) -> list[datetime
     return datetimes
 
 
-busy = False
-
-
-async def log(contents: AsDict) -> InsertOneResult:
-    return await logs.insert_one(contents.as_dict())
+async def log(to_log: Log) -> InsertOneResult | UpdateResult:
+    match to_log:
+        case ServiceLog():
+            return await logs.insert_one(to_log.as_dict())
+        case UserLog():
+            return await logs.find_one_and_update(
+                {"user_id": to_log.user_id, "chat_id": to_log.chat_id},
+                to_log.as_dict(),
+                upsert=True,
+            )
 
 
 async def mark_notified(user: User) -> User | None:
@@ -181,6 +188,9 @@ async def mark_notified(user: User) -> User | None:
         {"user_id": user.user_id, "chat_id": user.chat_id}, {"$set": {"notified": True}}
     ):
         return user
+
+
+busy = False
 
 
 async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | int:
@@ -191,7 +201,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         await sleep(60)
 
     if busy:
-        return
+        return busy
 
     now = datetime.now()
     h6 = timedelta(hours=6)
@@ -208,6 +218,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         and item["operation"] == "wants_to_join"
         and not "notified" in item
     )
+    hh = lambda uid, cid: str(uid) + "_" + str(cid)
 
     # Preparing query
     try:
@@ -215,6 +226,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         to_remove: list[User] = []
         to_notify: list[User] = []
         to_ban: list[User] = []
+        banned: dict[str, User] = {}
         banners = await get_banners()
         is_banned: Operation = "is_banned"
         cursor = logs.find(
@@ -229,15 +241,18 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         # Collecting results
         async for u in cursor:
 
+            uid = u["user_Id"]
+            cid = u["chat_id"]
+
             if u["operation"] == is_banned:
-                continue
+                banned[hh(uid, cid)] = User(u["user_id"], u["chat_id"])
 
             if tried_20min_ago_and_not_alerted(u):
                 to_notify.append(User(u["user_id"], u["chat_id"]))
 
             if tried_6h_ago_and_got_alert(u):
 
-                if u["chat_id"] in banners:
+                if u["chat_id"] in banners and not hh(uid, cid) in banned:
                     to_ban.append(User(u["user_id"], u["chat_id"]))
                 else:
                     to_remove.append(User(u["user_id"], u["chat_id"]))
