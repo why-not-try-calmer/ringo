@@ -117,10 +117,7 @@ async def remove_old_logs(now: Optional[datetime] = None) -> DeleteResult:
 
     operation: Operation = "background_task"
     t0 = now - timedelta(days=7)
-
-    return await logs.delete_many(
-        {"operation": {"$ne": operation}}, {"at": {"$lt": t0}}
-    )
+    return await logs.delete_many({"operation": {"$ne": operation}, "at": {"$lt": t0}})
 
 
 async def mark_as_banned(user: User) -> UpdateResult:
