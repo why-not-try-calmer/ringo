@@ -199,7 +199,6 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
     if context:
         await sleep(60)
-
     if busy:
         return busy
 
@@ -226,7 +225,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         to_remove: list[User] = []
         to_notify: list[User] = []
         to_ban: list[User] = []
-        banned: dict[str, User] = {}
+        banned: set[str] = set()
         banners = await get_banners()
         is_banned: Operation = "is_banned"
         cursor = logs.find(
@@ -239,13 +238,14 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         )
 
         # Collecting results
+
         async for u in cursor:
 
-            uid = u["user_Id"]
+            uid = u["user_id"]
             cid = u["chat_id"]
 
             if u["operation"] == is_banned:
-                banned[hh(uid, cid)] = User(u["user_id"], u["chat_id"])
+                banned.add(hh(uid, cid))
 
             if tried_20min_ago_and_not_alerted(u):
                 to_notify.append(User(u["user_id"], u["chat_id"]))
