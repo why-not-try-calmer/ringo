@@ -1,5 +1,6 @@
+from asyncio import as_completed
 from datetime import datetime
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, Iterable
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -98,3 +99,11 @@ async def mark_successful_coroutines(marker: Any, coroutine: Coroutine) -> Any |
         return marker
     except Exception:
         return
+
+
+async def run_coroutines_masked(coroutines: Iterable[Coroutine]) -> None:
+    for task in as_completed(coroutines):
+        try:
+            await task
+        except Exception:
+            return None

@@ -21,7 +21,7 @@ from app.types import (
     UserId,
     UserLog,
 )
-from app.utils import mark_successful_coroutines
+from app.utils import mark_successful_coroutines, run_coroutines_masked
 
 
 """ Settings """
@@ -134,10 +134,13 @@ async def preban(
         return
 
     async def accept_then_ban(user: User) -> tuple[bool, User]:
-        await mark_as_banned(user)
-        await context.bot.approve_chat_join_request(user.chat_id, user.user_id)
-        banned = await context.bot.ban_chat_member(user.chat_id, user.user_id)
-        return banned, user
+        try:
+            await context.bot.approve_chat_join_request(user.chat_id, user.user_id)
+            await context.bot.ban_chat_member(user.chat_id, user.user_id)
+            await mark_as_banned(user)
+            return banned, user
+        except Exception:
+            return False, user
 
     failed_to_ban_but_invited = []
     successfully_banned = []
@@ -259,12 +262,20 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
             busy = False
             return len(to_remove) + len(to_notify)
 
-        # Removing & notifying
+        # Removing, delcining and  notifying
         deleted: DeleteResult = await logs.delete_many(
             {
                 "user_id": {"$in": [u.user_id for u in to_remove]},
                 "chat_id": {"$in": [u.chat_id for u in to_remove]},
             }
+        )
+        # Declining pending join requests with exceptions masked
+        # as there is no way to determine with certainty if the target join request was taken back or not
+        await run_coroutines_masked(
+            [
+                context.bot.decline_chat_join_request(user.chat_id, user.user_id)
+                for user in to_remove
+            ]
         )
         successfully_notified = await gather(
             *[
