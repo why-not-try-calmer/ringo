@@ -14,6 +14,7 @@ from telegram import Message
 from app.handlers import (
     admin_op,
     expected_dialog,
+    getting_status,
     replying_to_bot,
     wants_to_join,
     processing_cbq,
@@ -39,6 +40,7 @@ def registerHandlers(app: Application):
     answerHelp = CommandHandler(["help", "start"], answering_help)
     setBot = CommandHandler("set", setting_bot)
     reset = CommandHandler("reset", resetting)
+    status = CommandHandler("status", getting_status)
     newMember = MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, has_joined)
     replyToBot = MessageHandler(filters.REPLY, replying_to_bot)
     adminOp = CommandHandler("admin", admin_op)
@@ -50,6 +52,7 @@ def registerHandlers(app: Application):
             acceptReject,
             setBot,
             reset,
+            status,
             newMember,
             joinReqHandler,
             answerHelp,

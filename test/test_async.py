@@ -2,7 +2,7 @@ import pytest
 from typing import Any, Coroutine
 from asyncio import as_completed, gather, get_event_loop_policy
 
-from app.db import background_task, fetch_chat_ids, fetch_settings
+from app.db import background_task, fetch_chat_ids, fetch_settings, get_status
 
 
 @pytest.fixture(scope="session")
@@ -48,3 +48,13 @@ async def test_run_background_task():
     result = await background_task(None)
     print(f"test_run_background: Found {result} to remove or notify.")
     assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_status():
+    if status := await get_status(-1001607431141):
+        text = status.render()
+        print(text)
+        assert len(text) > 0
+    else:
+        assert False

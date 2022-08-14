@@ -1,4 +1,5 @@
 from asyncio import as_completed
+from collections import namedtuple
 from datetime import datetime
 from typing import Any, Callable, Coroutine, Iterable
 from functools import wraps

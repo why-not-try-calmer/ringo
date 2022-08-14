@@ -8,7 +8,6 @@ from asyncio import as_completed, gather, sleep
 
 from app import chats, logs
 from app.types import (
-    AsDict,
     ChatId,
     Log,
     Questionnaire,
@@ -17,9 +16,11 @@ from app.types import (
     MessageId,
     ServiceLog,
     Settings,
+    Status,
     User,
     UserId,
     UserLog,
+    UserWithName,
 )
 from app.utils import mark_successful_coroutines, run_coroutines_masked
 
@@ -98,6 +99,53 @@ async def get_banners() -> list[ChatId]:
     return banners
 
 
+async def get_status(chat_id: ChatId) -> None | Status:
+    def extract(d: dict) -> UserWithName:
+        user_id = d["user_id"]
+        user_name = d["username"]
+        at = d["at"]
+        return UserWithName(user_id=user_id, user_name=user_name, at=at)
+
+    cursor = logs.find(
+        {
+            "at": {"$exists": True},
+            "user_id": {"$exists": True},
+            "username": {"$exists": True},
+            "chat_id": {"$exists": True},
+            "operation": {"$exists": True},
+        }
+    )
+    notified: list[UserWithName] = []
+    pending: list[UserWithName] = []
+    prebanned: list[UserWithName] = []
+
+    async for doc in cursor:
+        user = extract(doc)
+
+        if "is_banned" in doc:
+            prebanned.append(user)
+
+        elif "notified" in doc:
+            notified.append(user)
+
+        elif doc["operation"] == "wants_to_join":
+            pending.append(user)
+
+    operation: Operation = "background_task"
+    cursor = logs.find({"operation": operation})
+    ats = sorted([doc["at"] async for doc in cursor if "at" in doc])
+    work_summary = f"Chat has operated since {ats[0]} and has run {len(ats)} background tasks since, with the latest at: {ats[-1]}"
+    print(f"PENDING: {pending}")
+    if notified + pending + prebanned + ats:
+        return Status(
+            chat_id,
+            pending=pending,
+            notified=notified,
+            prebanned=prebanned,
+            work_summary=work_summary,
+        )
+
+
 """ Logs """
 
 
@@ -116,7 +164,7 @@ async def remove_old_logs(now: Optional[datetime] = None) -> DeleteResult:
         now = datetime.now()
 
     operation: Operation = "background_task"
-    t0 = now - timedelta(days=7)
+    t0 = now - timedelta(days=30)
     return await logs.delete_many({"operation": {"$ne": operation}, "at": {"$lt": t0}})
 
 
@@ -178,13 +226,13 @@ async def log(to_log: Log) -> InsertOneResult | UpdateResult:
         case UserLog():
             return await logs.find_one_and_update(
                 {"user_id": to_log.user_id, "chat_id": to_log.chat_id},
-                to_log.as_dict(),
+                {"$set": to_log.as_dict()},
                 upsert=True,
             )
 
 
 async def mark_notified(user: User) -> User | None:
-    if _ := await logs.update_many(
+    if _ := await logs.find_one_and_update(
         {"user_id": user.user_id, "chat_id": user.chat_id}, {"$set": {"notified": True}}
     ):
         return user
@@ -194,6 +242,15 @@ busy = False
 
 
 async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | int:
+    """
+    Run a background task at most every minute on the chat_id corresponding to the calling handler.
+    The logic is:
+    - if a user has not joined within the next 20 minutes after landing a join request, they get notified
+    - if a user has been notified and does not join within the next 5h40, they get banned if the chat declares a ban_not_joining setting or
+        if it doesn't, they get declined and removed from the database.
+    - all database logs older than 30 days get removed unless they bear the 'background_task' label.
+    """
+
     # Setup
     global busy
 
@@ -222,7 +279,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
     # Preparing query
     try:
         busy = True
-        to_remove: list[User] = []
+        to_deny_and_remove: list[User] = []
         to_notify: list[User] = []
         to_ban: list[User] = []
         banned: set[str] = set()
@@ -252,21 +309,22 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
             if tried_6h_ago_and_got_alert(u):
 
-                if u["chat_id"] in banners and not hh(uid, cid) in banned:
-                    to_ban.append(User(u["user_id"], u["chat_id"]))
+                if u["chat_id"] in banners:
+                    if not hh(uid, cid) in banned:
+                        to_ban.append(User(u["user_id"], u["chat_id"]))
                 else:
-                    to_remove.append(User(u["user_id"], u["chat_id"]))
+                    to_deny_and_remove.append(User(u["user_id"], u["chat_id"]))
 
         # Only for testing purposes
         if not context:
             busy = False
-            return len(to_remove) + len(to_notify)
+            return len(to_deny_and_remove) + len(to_notify)
 
-        # Removing, delcining and  notifying
+        # Removing, declining and  notifying
         deleted: DeleteResult = await logs.delete_many(
             {
-                "user_id": {"$in": [u.user_id for u in to_remove]},
-                "chat_id": {"$in": [u.chat_id for u in to_remove]},
+                "user_id": {"$in": [u.user_id for u in to_deny_and_remove]},
+                "chat_id": {"$in": [u.chat_id for u in to_deny_and_remove]},
             }
         )
         # Declining pending join requests with exceptions masked
@@ -274,7 +332,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         await run_coroutines_masked(
             [
                 context.bot.decline_chat_join_request(user.chat_id, user.user_id)
-                for user in to_remove
+                for user in to_deny_and_remove
             ]
         )
         successfully_notified = await gather(

@@ -30,6 +30,7 @@ from app.db import (
     background_task,
     check_if_banned,
     fetch_chat_ids,
+    get_status,
     get_users_at,
     log,
     remove_chats,
@@ -120,9 +121,6 @@ async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Cleaning up just in case
-    create_task(background_task(context))
-
     request = update.chat_join_request
     user_id, user_name, chat_id, chat_name = (
         request.from_user.id,
@@ -229,7 +227,10 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
 
             case _:
-                return
+                pass
+
+    # Running task for good measure
+    create_task(background_task(context))
 
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -353,30 +354,31 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     new_members_ids: list[UserId] = [uid for uid, _, _ in new_members]
 
+    # Termination if not a new user after all
     if not new_members:
         return
+
+    # Setting up for handling event
+    settings, banned = await gather(
+        fetch_settings(chat_id), check_if_banned(chat_id, new_members_ids)
+    )
 
     if context.bot.id in new_members_ids:
         # The newcomer is the bot itself
         report = ""
 
-        if settings := await fetch_settings(chat_id):
-            if getattr(settings, "helper_chat_id"):
-                report = (
-                    f"{strings['has_joined']['destination']} {settings.helper_chat_id}"
-                )
-            else:
-                report = strings["has_joined"]["not_destination"]
+        if settings and getattr(settings, "helper_chat_id"):
+            report = f"{strings['has_joined']['destination']} {settings.helper_chat_id}"
+        else:
+            report = strings["has_joined"]["not_destination"]
 
-            if hasattr(settings, "show_join_time") and settings.show_join_time:
-                datetimes = await get_users_at(chat_id, new_members_ids)
-                if average_join_time := average_nb_secs(datetimes):
-                    report += f" It took them {average_join_time} seconds for joining."
-
-            if settings.helper_chat_id:
-                await context.bot.send_message(
-                    settings.helper_chat_id, report, disable_web_page_preview=True
-                )
+        await context.bot.send_message(
+            settings.helper_chat_id
+            if settings and settings.helper_chat_id
+            else chat_id,
+            report,
+            disable_web_page_preview=True,
+        )
     else:
         # Genuinely new users
         # First checking if we are "pre-banning"
@@ -416,6 +418,12 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             + "!"
         )
+
+        if settings and hasattr(settings, "show_join_time") and settings.show_join_time:
+            datetimes = await get_users_at(chat_id, new_members_ids)
+            if average_join_time := average_nb_secs(datetimes):
+                greetings += f" It took them {average_join_time} seconds for joining."
+
         await context.bot.send_message(
             chat_id,
             greetings.capitalize(),
@@ -468,3 +476,14 @@ async def expected_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
             case Reply():
                 await dialog.extractor(text)
                 dialog_manager.remove(user_id)
+
+
+@withAuth
+async def getting_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat.id
+    reply = ""
+    if status := await get_status(chat_id):
+        reply += status.render()
+    else:
+        reply += "No pending, banned or notified users for this chat!"
+    await context.bot.send_message(chat_id, reply)

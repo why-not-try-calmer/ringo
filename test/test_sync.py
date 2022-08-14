@@ -1,10 +1,13 @@
+from datetime import datetime
 from toml import loads
 from app.types import (
     Questionnaire,
     Dialog,
     DialogManager,
+    Status,
     UserLog,
     Settings,
+    UserWithName,
 )
 
 
@@ -86,3 +89,13 @@ def test_questionnaire_from_db():
     rendered = questionnaire.render()
     print(rendered)
     assert rendered
+
+
+def test_status():
+    now = datetime.now()
+    user = UserWithName(0, "test-user", now)
+    status = Status(0, [user], [user], [user], "Nothing interesting to summarize")
+
+    text = status.render()
+    print(text)
+    assert len(text) > 0

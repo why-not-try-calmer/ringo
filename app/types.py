@@ -13,6 +13,7 @@ from typing import (
     Optional,
     OrderedDict,
     TypeAlias,
+    TypeVar,
 )
 from asyncio import create_task, get_running_loop
 
@@ -21,6 +22,8 @@ from telegram.helpers import escape_markdown
 ChatId: TypeAlias = int | str
 UserId: TypeAlias = int | str
 MessageId: TypeAlias = int | str
+
+""" Database objects """
 
 
 class AsDict:
@@ -190,7 +193,7 @@ class UserLog(AsDict):
     chat_id: ChatId
     user_id: UserId
     username: str
-    at: date
+    at: datetime
     joined_at: Optional[datetime]
     banned_at: Optional[datetime]
 
@@ -390,3 +393,41 @@ class DialogManager(OrderedDict):
                 raise TypeError(
                     "Cannot call 'cancel()' on a Reply; only Dialog supports it."
                 )
+
+
+""" Views """
+
+
+class UserWithName(NamedTuple):
+    user_id: UserId
+    user_name: str
+    at: datetime
+
+
+class Status(NamedTuple):
+    chat_id: ChatId
+    pending: list[UserWithName]
+    notified: list[UserWithName]
+    prebanned: list[UserWithName]
+    work_summary: str
+
+    def render(self) -> str:
+        _render = lambda nt: reduce(reducer, nt._asdict().items(), "")
+
+        def reducer(acc: str, keyval: Any) -> str:
+            k, v = keyval[0], keyval[1]
+
+            if not v:
+                return acc
+
+            elif isinstance(v, list):
+                match v[0]:
+                    case UserWithName():
+                        return acc + f"\n{k}: {', '.join([_render(x) for x in v])}\n"
+                    case _:
+                        return acc + ", ".join([str(x) for x in v])
+
+            else:
+                return acc + f"\n{k}: {str(v)}"
+
+        return _render(self)
