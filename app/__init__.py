@@ -24,7 +24,7 @@ client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
 db: AsyncIOMotorDatabase = client["alert-me"]
 chats: AsyncIOMotorCollection = db["chats"]
 logs: AsyncIOMotorCollection = db["logs"]
-clean_up_db = True if environ["CLEAN_UP_DB"] == "true" else False
+clean_up_db = True if environ.get("CLEAN_UP_DB", False) == "true" else False
 
 """ Setup strings """
 strings = ""
