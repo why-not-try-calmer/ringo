@@ -229,13 +229,16 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             case _:
                 pass
 
-    # Running task for good measure
-    create_task(background_task(context))
-
 
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Taking advantage of the fact that even with privacy mode off
+    # the bot will be handed over all replies
+    create_task(background_task(context))
+
     if not (hasattr(update, "message") and hasattr(update.message, "reply_to_message")):
-        print(f"Unable to make use of this update: {update}")
+        print(
+            f"Unable to make use of this update: {update}. Running background task instead"
+        )
         return
 
     if (
