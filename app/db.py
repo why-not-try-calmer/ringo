@@ -1,3 +1,4 @@
+from functools import reduce
 from os import environ
 from typing import Optional
 from telegram.ext import ContextTypes
@@ -187,7 +188,10 @@ async def preban(
 
     async def accept_then_ban(user: User) -> tuple[bool, User]:
         try:
-            await context.bot.approve_chat_join_request(user.chat_id, user.user_id)
+            await context.bot.approve_chat_join_request(
+                user.chat_id,
+                user.user_id if isinstance(user.user_id, int) else int(user.user_id),
+            )
             await context.bot.ban_chat_member(user.chat_id, user.user_id)
             await mark_as_banned(user)
             return banned, user
@@ -336,7 +340,12 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         async def deny_notify(user: User):
             return await gather(
                 *[
-                    context.bot.decline_chat_join_request(user.chat_id, user.user_id),
+                    context.bot.decline_chat_join_request(
+                        user.chat_id,
+                        user.user_id
+                        if isinstance(user.user_id, int)
+                        else int(user.user_id),
+                    ),
                     context.bot.send_message(
                         user.chat_id,
                         "Too much time has elapsed. Please request joining again.",
@@ -369,7 +378,8 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
         if to_ban:
             await context.bot.send_message(
-                environ["ADMIN"], f"Banning these users: {str(to_ban)}"
+                environ["ADMIN"],
+                f"Banning these users: {', '.join([u.render() for u in to_ban])}",
             )
 
         if mb_banned := await preban(context, to_ban):

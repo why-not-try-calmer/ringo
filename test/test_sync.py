@@ -9,6 +9,7 @@ from app.types import (
     Settings,
     UserWithName,
 )
+from app.utils import into_pipeline
 
 
 def test_settings():
@@ -99,3 +100,11 @@ def test_status():
     text = status.render()
     print(text)
     assert len(text) > 0
+
+
+def test_into_pipeline():
+    producer = [1,2,3,4]
+    fi = lambda x: x if x % 2 == 0 else None 
+    to_s = lambda x: str(x)
+    pipeline = into_pipeline(producer, (fi, to_s))
+    assert list(pipeline) == ["2", "4"]

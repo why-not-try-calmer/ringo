@@ -238,7 +238,13 @@ class ServiceLog(AsDict):
 
 Log: TypeAlias = UserLog | ServiceLog
 
-User = namedtuple("User", ["user_id", "chat_id"])
+
+class User(NamedTuple):
+    user_id: UserId
+    chat_id: ChatId
+
+    def render(self) -> str:
+        return f"user_id: {self.user_id}, chat_id: {self.chat_id}"
 
 
 """" Conversation handler to replace the garbage ConversationHandler from the library"""

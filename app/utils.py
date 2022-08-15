@@ -1,7 +1,7 @@
 from asyncio import as_completed
 from collections import namedtuple
 from datetime import datetime
-from typing import Any, Callable, Coroutine, Iterable
+from typing import Any, Callable, Coroutine, Generator, Iterable, Iterator
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -108,3 +108,19 @@ async def run_coroutines_masked(coroutines: Iterable[Coroutine]) -> None:
             await task
         except Exception:
             return None
+
+
+def into_pipeline(
+    producer: Iterable, its: Iterable[Callable]
+) -> Generator[None, None, Any]:
+    for x in producer:
+        tmp: Any = x
+
+        for f in its:
+            tmp = f(tmp)
+            
+            if tmp is None:
+                break
+
+        if not tmp is None:
+            yield tmp
