@@ -23,7 +23,7 @@ from app.types import (
     UserWithName,
 )
 from app.utils import mark_successful_coroutines, run_coroutines_masked
-
+from app import clean_up_db
 
 """ Settings """
 
@@ -333,12 +333,18 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         )
         # Declining pending join requests with exceptions masked
         # as there is no way to determine with certainty if the target join request was taken back or not
-        await run_coroutines_masked(
-            [
-                context.bot.decline_chat_join_request(user.chat_id, user.user_id)
-                for user in to_deny_and_remove
-            ]
-        )
+        async def deny_notify(user: User):
+            return await gather(
+                *[
+                    context.bot.decline_chat_join_request(user.chat_id, user.user_id),
+                    context.bot.send_message(
+                        user.chat_id,
+                        "Too much time has elapsed. Please request joining again.",
+                    ),
+                ]
+            )
+
+        await run_coroutines_masked([deny_notify(user) for user in to_deny_and_remove])
 
         # Notifying & marking success
         successfully_notified = await gather(
@@ -393,7 +399,8 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         )
 
         # Removing old entries
-        await remove_old_logs()
+        if clean_up_db:
+            await remove_old_logs()
 
     except Exception as error:
         if context:
