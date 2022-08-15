@@ -115,34 +115,38 @@ async def get_status(chat_id: ChatId) -> None | Status:
             "operation": {"$exists": True},
         }
     )
+
     notified: list[UserWithName] = []
     pending: list[UserWithName] = []
     prebanned: list[UserWithName] = []
+    is_banned: Operation = "is_banned"
+    wants_to_join: Operation = "wants_to_join"
 
     async for doc in cursor:
         user = extract(doc)
 
-        if "is_banned" in doc:
+        if doc["operation"] == is_banned:
             prebanned.append(user)
 
         elif "notified" in doc:
             notified.append(user)
 
-        elif doc["operation"] == "wants_to_join":
+        elif doc["operation"] == wants_to_join:
             pending.append(user)
 
     operation: Operation = "background_task"
     cursor = logs.find({"operation": operation})
+
     ats = sorted([doc["at"] async for doc in cursor if "at" in doc])
     work_summary = f"Chat has operated since {ats[0]} and has run {len(ats)} background tasks since, with the latest at: {ats[-1]}"
-    print(f"PENDING: {pending}")
+
     if notified + pending + prebanned + ats:
         return Status(
             chat_id,
-            pending=pending,
-            notified=notified,
-            prebanned=prebanned,
-            work_summary=work_summary,
+            pending,
+            notified,
+            prebanned,
+            work_summary,
         )
 
 
@@ -335,6 +339,8 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
                 for user in to_deny_and_remove
             ]
         )
+
+        # Notifying & marking success
         successfully_notified = await gather(
             *[
                 mark_successful_coroutines(
