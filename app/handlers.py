@@ -420,7 +420,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             )
             + "!"
-        )
+        ).capitalize()
 
         if settings and hasattr(settings, "show_join_time") and settings.show_join_time:
             datetimes = await get_users_at(chat_id, new_members_ids)
@@ -429,7 +429,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(
             chat_id,
-            greetings.capitalize(),
+            greetings,
             parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=True,
         )
