@@ -193,10 +193,11 @@ async def preban(
                 user.user_id if isinstance(user.user_id, int) else int(user.user_id),
             )
             await context.bot.ban_chat_member(user.chat_id, user.user_id)
-            await mark_as_banned(user)
             return banned, user
         except Exception:
             return False, user
+        finally:
+            await mark_as_banned(user)
 
     failed_to_ban_but_invited = []
     successfully_banned = []
@@ -229,8 +230,10 @@ async def get_users_at(chat_id: ChatId, user_ids: list[UserId]) -> list[datetime
 
 async def log(to_log: Log) -> InsertOneResult | UpdateResult:
     match to_log:
+
         case ServiceLog():
             return await logs.insert_one(to_log.as_dict())
+
         case UserLog():
             return await logs.find_one_and_update(
                 {"user_id": to_log.user_id, "chat_id": to_log.chat_id},
@@ -239,10 +242,11 @@ async def log(to_log: Log) -> InsertOneResult | UpdateResult:
             )
 
 
-async def mark_notified(user: User) -> User | None:
-    if _ := await logs.find_one_and_update(
+async def mark_as_notified(user: User) -> User | None:
+    updated = await logs.find_one_and_update(
         {"user_id": user.user_id, "chat_id": user.chat_id}, {"$set": {"notified": True}}
-    ):
+    )
+    if updated:
         return user
 
 
@@ -303,7 +307,6 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         )
 
         # Collecting results
-
         async for u in cursor:
 
             uid = u["user_id"]
@@ -328,7 +331,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
             busy = False
             return len(to_deny_and_remove) + len(to_notify)
 
-        # Removing, declining and  notifying
+        # Removing, declining and notifying
         deleted: DeleteResult = await logs.delete_many(
             {
                 "user_id": {"$in": [u.user_id for u in to_deny_and_remove]},
@@ -364,7 +367,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
             ]
         )
         confirmed_notified = await gather(
-            *[mark_notified(user) for user in successfully_notified]
+            *[mark_as_notified(user) for user in successfully_notified]
         )
 
         # Banning & notifying
