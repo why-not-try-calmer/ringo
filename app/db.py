@@ -347,7 +347,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
                         else int(user.user_id),
                     ),
                     context.bot.send_message(
-                        user.chat_id,
+                        user.user_id,
                         "Too much time has elapsed. Please request joining again.",
                     ),
                 ]
