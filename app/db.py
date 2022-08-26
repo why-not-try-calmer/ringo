@@ -368,6 +368,8 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         )
         confirmed_notified = await gather(
             *[mark_as_notified(user) for user in successfully_notified]
+            if successfully_notified
+            else []
         )
 
         # Banning & notifying
