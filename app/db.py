@@ -309,6 +309,9 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
         # Collecting results
         async for u in cursor:
 
+            if not "user_id" in u or not "chat_id" in u:
+                continue
+
             uid = u["user_id"]
             cid = u["chat_id"]
 
