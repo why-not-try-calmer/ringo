@@ -6,7 +6,7 @@ WORKDIR /opt/app
 COPY ./requirements.txt .
 
 ENV PIPENV_VENV_IN_PROJECT=1
-RUN pipenv install --three
+RUN pipenv install
 
 RUN openssl req -subj \
     "/C=CH/ST=Bern/L=Bern/O=WhoCares /OU=Again/CN=SoNosey" \
