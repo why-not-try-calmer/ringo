@@ -37,4 +37,7 @@ jobs:
     - name: Test with pytest
       env:
         mongo: ${{ secrets.MONGO_CONN_STRING }}
-      run: MONGO_CONN_STRING=$mongo python -m pytest -s --asyncio-mode=strict
+      run: |
+        last3_mongo=${mongo: -3}
+        echo "Running with this connection string: ...$last3_mongo"
+        MONGO_CONN_STRING=$mongo python -m pytest -s --asyncio-mode=strict
