@@ -426,6 +426,8 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
             datetimes = await get_users_at(chat_id, new_members_ids)
             if average_join_time := average_nb_secs(datetimes):
                 greetings += f" It took you {average_join_time} seconds for joining."
+                if average_join_time < 12:
+                    greetings += " Did you actually _read_ the conditions? {u'\U0001F4914'}"
 
         await context.bot.send_message(
             chat_id,
