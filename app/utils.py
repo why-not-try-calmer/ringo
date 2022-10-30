@@ -1,7 +1,6 @@
 from asyncio import as_completed
-from collections import namedtuple
-from datetime import datetime
-from typing import Any, Callable, Coroutine, Generator, Iterable, Iterator
+from datetime import datetime, timedelta
+from typing import Any, Callable, Coroutine, Generator, Iterable
 from functools import wraps
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -16,6 +15,18 @@ def average_nb_secs(datetimes: list[datetime]) -> None | int:
         now = datetime.now()
         deltas = [(now - d).total_seconds() for d in datetimes]
         return int(sum(deltas) / len(deltas))
+
+
+def fmt_delta(secs: int) -> str:
+    d = str(timedelta(seconds=secs))
+    h, m, s = d.split(":")
+    timestr = ""
+    if not h in ["0", "00"]:
+        timestr += f"{h} hours, "
+    if not m in ["0", "00"]:
+        timestr += f"{m} minutes, "
+    timestr += f"{s} seconds"
+    return timestr
 
 
 def mention_markdown(user_id: UserId, username: str) -> str:
@@ -118,7 +129,7 @@ def into_pipeline(
 
         for f in its:
             tmp = f(tmp)
-            
+
             if tmp is None:
                 break
 

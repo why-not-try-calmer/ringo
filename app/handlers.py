@@ -20,6 +20,7 @@ from app.utils import (
     admins_ids_mkup,
     agree_btn,
     average_nb_secs,
+    fmt_delta,
     mention_markdown,
     withAuth,
 )
@@ -432,7 +433,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                 elif average_join_time > 10800:
                     greetings += (
-                        f" It took you {average_join_time} seconds for joining. "
+                        f" It took you {fmt_delta(average_join_time)} for joining. "
                         + "\U0001F62A"
                     )
 
