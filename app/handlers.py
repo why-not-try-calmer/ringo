@@ -420,7 +420,8 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     for uid, name, lang in not_banned
                 ]
             )
-            + "!"
+            + "! "
+            + "\U0001F383"
         ).capitalize()
 
         if settings and hasattr(settings, "show_join_time") and settings.show_join_time:
