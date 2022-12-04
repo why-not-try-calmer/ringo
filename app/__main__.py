@@ -98,7 +98,7 @@ if __name__ == "__main__":
         )
     else:
         print(
-            f"Starting webserver & webhook on port {PORT} *without* an SSL certificate. HTTPS requests will need to be decoded and encoded by the server!"
+            f"Starting webserver & webhook ({ENDPOINT}/bot<TOKEN>) on port {PORT} *without* an SSL certificate. HTTPS requests will need to be decoded and encoded by the server!"
         )
         app.run_webhook(
             listen="0.0.0.0",
