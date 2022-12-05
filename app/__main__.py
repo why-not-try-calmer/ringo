@@ -105,6 +105,6 @@ if __name__ == "__main__":
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
-            url_path=f"/ringo/bot{TOKEN}",
-            webhook_url=f"{ENDPOINT}/bot{TOKEN}",
+            url_path=f"{ENDPOINT}/bot{TOKEN}",
+            webhook_url=f"{HOST}/{ENDPOINT}/bot{TOKEN}",
         )
