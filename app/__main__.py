@@ -71,8 +71,10 @@ if __name__ == "__main__":
     import uvloop
 
     TOKEN = environ["TOKEN"]
+    HOST = environ["HOST"]
     ENDPOINT = environ["ENDPOINT"]
     PORT = int(environ.get("PORT", "8443"))
+
     private_key_path = "./private.key"
     certificate_path = "./cert.pem"
 
@@ -91,8 +93,8 @@ if __name__ == "__main__":
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
-            url_path=f"bot{TOKEN}",
-            webhook_url=f"{ENDPOINT}/bot{TOKEN}",
+            url_path=f"/{ENDPOINT}/bot{TOKEN}",
+            webhook_url=f"{HOST}/{ENDPOINT}/bot{TOKEN}",
             key=private_key_path[2:],
             cert=certificate_path[2:],
         )
@@ -103,6 +105,6 @@ if __name__ == "__main__":
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
-            url_path=f"bot{TOKEN}",
+            url_path=f"/ringo/bot{TOKEN}",
             webhook_url=f"{ENDPOINT}/bot{TOKEN}",
         )
