@@ -504,5 +504,9 @@ async def getting_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         reply += "No pending, banned or notified users for this chat!"
 
-    for r in slice_on_4096(reply):
-        await context.bot.send_message(chat_id, r)
+    sliced = slice_on_4096(reply)
+    t = len(sliced)
+
+    for i, s in enumerate(sliced):
+        e = f"({i+1}/{t}) {s}"
+        await context.bot.send_message(chat_id, e)

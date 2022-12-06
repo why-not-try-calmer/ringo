@@ -115,10 +115,13 @@ def test_into_pipeline():
 
 def test_slice_on_4096():
     url = "https://baconipsum.com/api/?type=meat-and-filler&paras=30&format=text"
-    sample_text = requests.get(url).text
-    sliced = slice_on_4096(sample_text)
-    l0 = round(len(sample_text) / 4096)
-    l1 = len(sliced)
-    assert l1 - l0 <= 1
-    summed = sum(len(t) for t in sliced)
-    assert len(sample_text) - summed <= 2
+    sample = requests.get(url).text
+    sliced = slice_on_4096(sample)
+    expected_partitions = round(len(sample) / 4096)
+    partitions = len(sliced)
+    summed_partitions = sum(len(t) for t in sliced)
+
+    assert partitions - expected_partitions <= 1
+    assert len(sample) - summed_partitions <= 2
+
+    print("\n8<-------------\n".join(sliced))

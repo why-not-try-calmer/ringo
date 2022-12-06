@@ -138,11 +138,13 @@ def into_pipeline(
 
 
 def slice_on_4096(_input: list[str] | str, last="", acc=[]) -> list[str]:
+    too_long = lambda s: len(s) > 4096
+
     if isinstance(_input, str):
-        if len(_input) <= 4096:
-            return [_input]
-        else:
+        if too_long(_input):
             _input = _input.split("\n")
+        else:
+            return [_input]
 
     if not _input:
         acc.append(last)
@@ -151,8 +153,8 @@ def slice_on_4096(_input: list[str] | str, last="", acc=[]) -> list[str]:
     head, tail = _input[0], _input[1:]
     joined = "\n".join([last, head])
 
-    if len(joined) <= 4096:
-        return slice_on_4096(tail, joined, acc)
-    else:
+    if too_long(joined):
         acc.append(last)
         return slice_on_4096(tail, head, acc)
+    else:
+        return slice_on_4096(tail, joined, acc)
