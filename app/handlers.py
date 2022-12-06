@@ -1,19 +1,36 @@
-from os import environ
-from telegram import Update
-from telegram.ext import ContextTypes
-from telegram.constants import ParseMode, ChatType
-from telegram.helpers import escape_markdown
 from asyncio import create_task, gather
+from os import environ
 
+from telegram import Update
+from telegram.constants import ChatType, ParseMode
+from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
+
+from app import dialog_manager, strings
+from app.db import (
+    add_pending,
+    background_task,
+    check_if_banned,
+    fetch_chat_ids,
+    fetch_settings,
+    get_status,
+    get_users_at,
+    log,
+    remove_chats,
+    remove_pending,
+    reset,
+    upsert_questionnaire,
+    upsert_settings,
+)
 from app.types import (
     ChatId,
     Dialog,
-    Questionnaire,
     Mode,
+    Questionnaire,
     Reply,
+    Settings,
     UserId,
     UserLog,
-    Settings,
 )
 from app.utils import (
     accept_or_reject_btns,
@@ -21,25 +38,10 @@ from app.utils import (
     agree_btn,
     average_nb_secs,
     fmt_delta,
+    mark_excepted_coroutines,
     mention_markdown,
+    slice_on_4096,
     withAuth,
-)
-from app import strings, dialog_manager
-from app.utils import mark_excepted_coroutines
-from app.db import (
-    add_pending,
-    background_task,
-    check_if_banned,
-    fetch_chat_ids,
-    get_status,
-    get_users_at,
-    log,
-    remove_chats,
-    remove_pending,
-    fetch_settings,
-    upsert_questionnaire,
-    upsert_settings,
-    reset,
 )
 
 
@@ -496,8 +498,11 @@ async def expected_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def getting_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
     reply = ""
+
     if status := await get_status(chat_id):
         reply += status.render()
     else:
         reply += "No pending, banned or notified users for this chat!"
-    await context.bot.send_message(chat_id, reply)
+
+    for r in slice_on_4096(reply):
+        await context.bot.send_message(chat_id, r)

@@ -135,3 +135,24 @@ def into_pipeline(
 
         if not tmp is None:
             yield tmp
+
+
+def slice_on_4096(_input: list[str] | str, last="", acc=[]) -> list[str]:
+    if isinstance(_input, str):
+        if len(_input) <= 4096:
+            return [_input]
+        else:
+            _input = _input.split("\n")
+
+    if not _input:
+        acc.append(last)
+        return acc
+
+    head, tail = _input[0], _input[1:]
+    joined = "\n".join([last, head])
+
+    if len(joined) <= 4096:
+        return slice_on_4096(tail, joined, acc)
+    else:
+        acc.append(last)
+        return slice_on_4096(tail, head, acc)

@@ -1,6 +1,5 @@
 from __future__ import annotations
-from collections import namedtuple
-from datetime import date, datetime
+from datetime import datetime
 from itertools import pairwise
 from functools import reduce
 from typing import (
@@ -13,7 +12,6 @@ from typing import (
     Optional,
     OrderedDict,
     TypeAlias,
-    TypeVar,
 )
 from asyncio import create_task, get_running_loop
 

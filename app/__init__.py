@@ -1,6 +1,8 @@
 import logging
 import warnings
 from os import environ
+from sys import stdout
+
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
@@ -8,7 +10,7 @@ from motor.motor_asyncio import (
 )
 from telegram.warnings import PTBUserWarning
 from toml import loads
-from sys import stdout
+
 from app.types import DialogManager
 
 """ Logging """

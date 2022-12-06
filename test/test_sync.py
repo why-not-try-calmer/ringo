@@ -1,15 +1,18 @@
 from datetime import datetime
+
+import requests
 from toml import loads
+
 from app.types import (
-    Questionnaire,
     Dialog,
     DialogManager,
+    Questionnaire,
+    Settings,
     Status,
     UserLog,
-    Settings,
     UserWithName,
 )
-from app.utils import into_pipeline
+from app.utils import into_pipeline, slice_on_4096
 
 
 def test_settings():
@@ -103,8 +106,19 @@ def test_status():
 
 
 def test_into_pipeline():
-    producer = [1,2,3,4]
-    fi = lambda x: x if x % 2 == 0 else None 
+    producer = [1, 2, 3, 4]
+    fi = lambda x: x if x % 2 == 0 else None
     to_s = lambda x: str(x)
     pipeline = into_pipeline(producer, (fi, to_s))
     assert list(pipeline) == ["2", "4"]
+
+
+def test_slice_on_4096():
+    url = "https://baconipsum.com/api/?type=meat-and-filler&paras=30&format=text"
+    sample_text = requests.get(url).text
+    sliced = slice_on_4096(sample_text)
+    l0 = round(len(sample_text) / 4096)
+    l1 = len(sliced)
+    assert l1 - l0 <= 1
+    summed = sum(len(t) for t in sliced)
+    assert len(sample_text) - summed <= 2
