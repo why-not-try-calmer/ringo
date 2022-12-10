@@ -137,24 +137,20 @@ def into_pipeline(
             yield tmp
 
 
-def slice_on_4096(_input: list[str] | str, last="", acc=[]) -> list[str]:
-    too_long = lambda s: len(s) > 4096
+def slice_on_n(s: str, n=4096, acc=None) -> list[str]:
+    if acc is None:
+        acc = []
 
-    if isinstance(_input, str):
-        if too_long(_input):
-            _input = _input.split("\n")
-        else:
-            return [_input]
-
-    if not _input:
-        acc.append(last)
+    if len(s) <= n:
+        acc.append(s)
         return acc
 
-    head, tail = _input[0], _input[1:]
-    joined = "\n".join([last, head])
+    sli = s[:n]
+    before_after = sli.rsplit("\n", 1)
+    acc.append(before_after[0])
 
-    if too_long(joined):
-        acc.append(last)
-        return slice_on_4096(tail, head, acc)
-    else:
-        return slice_on_4096(tail, joined, acc)
+    return slice_on_n(
+        (before_after[1] + s[n:] if len(before_after) == 2 else s[n:]),
+        n,
+        acc,
+    )

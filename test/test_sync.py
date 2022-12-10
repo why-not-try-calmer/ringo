@@ -12,7 +12,7 @@ from app.types import (
     UserLog,
     UserWithName,
 )
-from app.utils import into_pipeline, slice_on_4096
+from app.utils import into_pipeline, slice_on_n
 
 
 def test_settings():
@@ -116,12 +116,12 @@ def test_into_pipeline():
 def test_slice_on_4096():
     url = "https://baconipsum.com/api/?type=meat-and-filler&paras=30&format=text"
     sample = requests.get(url).text
-    sliced = slice_on_4096(sample)
+    sliced = slice_on_n(sample)
     expected_partitions = round(len(sample) / 4096)
     partitions = len(sliced)
     summed_partitions = sum(len(t) for t in sliced)
 
     assert partitions - expected_partitions <= 1
-    assert len(sample) - summed_partitions <= 2
+    assert len(sample) - summed_partitions <= 3
 
     print("\n8<-------------\n".join(sliced))

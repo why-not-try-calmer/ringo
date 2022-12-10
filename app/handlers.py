@@ -40,7 +40,7 @@ from app.utils import (
     fmt_delta,
     mark_excepted_coroutines,
     mention_markdown,
-    slice_on_4096,
+    slice_on_n,
     withAuth,
 )
 
@@ -504,7 +504,7 @@ async def getting_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         reply += "No pending, banned or notified users for this chat!"
 
-    sliced = slice_on_4096(reply)
+    sliced = slice_on_n(reply)
     t = len(sliced)
 
     for i, s in enumerate(sliced):
