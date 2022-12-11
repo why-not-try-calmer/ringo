@@ -1,13 +1,11 @@
 from asyncio import as_completed
-from datetime import datetime, timedelta
-from typing import Any, Callable, Coroutine, Generator, Iterable
+from datetime import datetime, timedelta, date
 from functools import wraps
+from typing import Any, Callable, Coroutine, Generator, Iterable
+
 from telegram import ChatMember, InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.types import (
-    ChatId,
-    UserId,
-)
+from app.types import ChatId, UserId
 
 
 def average_nb_secs(datetimes: list[datetime]) -> None | int:
@@ -154,3 +152,22 @@ def slice_on_n(s: str, n=4096, acc=None) -> list[str]:
         n,
         acc,
     )
+
+
+def appropriate_emoji() -> str:
+    year = [
+        "\U00012603",
+        "\U000129E7",
+        "\U0001FABA",
+        "\U0001F490",
+        "\U0001F337",
+        "\U0001F33D",
+        "\U0001F3D6",
+        "\U0001F33B",
+        "\U0001F342",
+        "\U0001F928",
+        "\U0001F344",
+        "\U0001F384",
+    ]
+    m = date.today().month
+    return year[m - 1]

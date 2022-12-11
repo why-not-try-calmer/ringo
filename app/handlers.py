@@ -36,6 +36,7 @@ from app.utils import (
     accept_or_reject_btns,
     admins_ids_mkup,
     agree_btn,
+    appropriate_emoji,
     average_nb_secs,
     fmt_delta,
     mark_excepted_coroutines,
@@ -423,7 +424,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             )
             + "! "
-            + "\U0001F383"
+            + appropriate_emoji()
         ).capitalize()
 
         if settings and hasattr(settings, "show_join_time") and settings.show_join_time:
@@ -432,7 +433,7 @@ async def has_joined(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if average_join_time < 12:
                     greetings += (
                         f" It took you {average_join_time} seconds for joining. Did you actually _read_ the conditions? "
-                        + "\U0001F928"
+                        + "\U0001F609"
                     )
                 elif average_join_time > 10800:
                     greetings += (
