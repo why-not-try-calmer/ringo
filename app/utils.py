@@ -156,8 +156,8 @@ def slice_on_n(s: str, n=4096, acc=None) -> list[str]:
 
 def appropriate_emoji() -> str:
     year = [
-        "\U00012603",
-        "\U000129E7",
+        "\U0001F311",
+        "\U0001F9E7",
         "\U0001FABA",
         "\U0001F490",
         "\U0001F337",
