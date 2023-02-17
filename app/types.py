@@ -315,7 +315,7 @@ class Dialog:
             if loop.is_running:
                 t = create_task(self.extractor(self.answers))
                 self.tasks.add(t)
-                t.add_done_callback(discard)
+                t.add_done_callback(self.tasks.discard)
             else:
                 print(f"Mock extracting{self.answers}")
 

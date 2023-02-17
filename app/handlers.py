@@ -241,7 +241,7 @@ async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # the bot will be handed over all replies
     t = create_task(background_task(context))
     tasks.add(t)
-    t.add_done_callback(discard)
+    t.add_done_callback(tasks.discard)
 
     if not (hasattr(update, "message") and hasattr(update.message, "reply_to_message")):
         print(
