@@ -234,10 +234,14 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
 
+tasks = set()
+
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Taking advantage of the fact that even with privacy mode off
     # the bot will be handed over all replies
-    create_task(background_task(context))
+    t = create_task(background_task(context))
+    tasks.add(t)
+    t.add_done_callback(discard)
 
     if not (hasattr(update, "message") and hasattr(update.message, "reply_to_message")):
         print(
