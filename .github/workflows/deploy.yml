@@ -1,4 +1,4 @@
-name: Deploy
+name: Deployment
 
 on:
   workflow_run:
@@ -25,6 +25,4 @@ jobs:
           key: ${{ secrets.PROD_KEY }}
           script: |
             cd /opt/app
-            docker-compose down --remove-orphans
-            docker-compose pull   
-            docker-compose up -d
+            ./regenerate ringo
