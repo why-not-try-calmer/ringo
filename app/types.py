@@ -267,6 +267,8 @@ class Dialog:
     extractor: Extractor
     has_started: bool
 
+    tasks = set()
+
     def __init__(
         self,
         user_id: UserId,
@@ -311,7 +313,9 @@ class Dialog:
         try:
             loop = get_running_loop()
             if loop.is_running:
-                create_task(self.extractor(self.answers))
+                t = create_task(self.extractor(self.answers))
+                self.tasks.add(t)
+                t.add_done_callback(self.tasks.discard)
             else:
                 print(f"Mock extracting{self.answers}")
 
