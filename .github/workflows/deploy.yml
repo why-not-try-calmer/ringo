@@ -4,8 +4,8 @@ on:
   workflow_run:
     workflows: ["Publish"]
     branches: [master]
-    types: 
-    - completed
+    types:
+      - completed
 
   workflow_dispatch:
 
@@ -23,6 +23,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: root
           key: ${{ secrets.PROD_KEY }}
+          password: ${{ secrets.PROD_PASSWD }}
           script: |
             cd /opt/app
             ./refresh ringo
