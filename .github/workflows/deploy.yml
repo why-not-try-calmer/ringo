@@ -23,7 +23,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: root
           key: ${{ secrets.PROD_KEY }}
-          password: ${{ secrets.PROD_PASSWD }}
+          passphrase: ${{ secrets.PROD_PASSWD }}
           script: |
             cd /opt/app
             ./refresh ringo
