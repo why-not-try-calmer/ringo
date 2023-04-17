@@ -1,4 +1,3 @@
-from functools import reduce
 from os import environ
 from typing import Optional
 from telegram.ext import ContextTypes

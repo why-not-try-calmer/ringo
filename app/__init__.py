@@ -5,8 +5,6 @@ from sys import stdout
 
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
-    AsyncIOMotorCollection,
-    AsyncIOMotorDatabase,
 )
 from telegram.warnings import PTBUserWarning
 from toml import loads
@@ -23,9 +21,9 @@ warnings.filterwarnings("error", category=PTBUserWarning)
 
 """ Database """
 client = AsyncIOMotorClient(environ["MONGO_CONN_STRING"])
-db: AsyncIOMotorDatabase = client["alert-me"]
-chats: AsyncIOMotorCollection = db["chats"]
-logs: AsyncIOMotorCollection = db["logs"]
+db = client["alert-me"]
+chats = db["chats"]
+logs = db["logs"]
 clean_up_db = True if environ.get("CLEAN_UP_DB", False) == "true" else False
 
 """ Setup strings """
