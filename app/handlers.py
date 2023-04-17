@@ -236,6 +236,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 tasks = set()
 
+
 async def replying_to_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Taking advantage of the fact that even with privacy mode off
     # the bot will be handed over all replies
@@ -285,27 +286,23 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Auto mode
     if operation == "self-confirm":
-        await gather(
-            context.bot.send_message(
-                update.callback_query.from_user.id,
-                f"Thanks, you are welcome to join {chat_url}. {strings['has_joined']['post_join']}",
-                disable_web_page_preview=True,
-            ),
-            context.bot.answer_callback_query(update.callback_query.id),
+        await context.bot.answer_callback_query(update.callback_query.id)
+        await context.bot.send_message(
+            update.callback_query.from_user.id,
+            f"Thanks, you are welcome to join {chat_url}. {strings['has_joined']['post_join']}",
+            disable_web_page_preview=True,
         )
-        await gather(
-            context.bot.approve_chat_join_request(
-                chat_id_str, update.callback_query.from_user.id
-            ),
-            log(
-                UserLog(
-                    "has_verified",
-                    update.callback_query.from_user.id,
-                    update.callback_query.from_user.id,
-                    update.callback_query.from_user.username
-                    or update.callback_query.from_user.first_name,
-                )
-            ),
+        await context.bot.approve_chat_join_request(
+            chat_id_str, update.callback_query.from_user.id
+        )
+        await log(
+            UserLog(
+                "has_verified",
+                update.callback_query.from_user.id,
+                update.callback_query.from_user.id,
+                update.callback_query.from_user.username
+                or update.callback_query.from_user.first_name,
+            )
         )
         return
 
