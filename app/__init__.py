@@ -3,9 +3,7 @@ import warnings
 from os import environ
 from sys import stdout
 
-from motor.motor_asyncio import (
-    AsyncIOMotorClient,
-)
+from motor.motor_asyncio import AsyncIOMotorClient
 from telegram.warnings import PTBUserWarning
 from toml import loads
 

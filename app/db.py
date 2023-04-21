@@ -1,19 +1,19 @@
+from asyncio import as_completed, gather, sleep
+from datetime import datetime, timedelta
 from os import environ
 from typing import Optional
-from telegram.ext import ContextTypes
-from pymongo.collection import ReturnDocument
-from pymongo.results import DeleteResult, UpdateResult, InsertOneResult
-from datetime import datetime, timedelta
-from asyncio import as_completed, gather, sleep
 
-from app import chats, logs
+from pymongo.collection import ReturnDocument
+from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
+from telegram.ext import ContextTypes
+
+from app import chats, clean_up_db, logs
 from app.types import (
     ChatId,
     Log,
-    Questionnaire,
-    Operation,
-    ServiceLog,
     MessageId,
+    Operation,
+    Questionnaire,
     ServiceLog,
     Settings,
     Status,
@@ -23,7 +23,6 @@ from app.types import (
     UserWithName,
 )
 from app.utils import mark_successful_coroutines, run_coroutines_masked
-from app import clean_up_db
 
 """ Settings """
 
@@ -72,7 +71,6 @@ async def remove_chats(chats_ids: list[ChatId]) -> DeleteResult:
 async def add_pending(
     chat_id: ChatId, user_id: UserId, message_id: MessageId
 ) -> UpdateResult:
-
     user_key = f"pending_{user_id}"
     payload = {"message_id": message_id, "at": datetime.now()}
     return await chats.find_one_and_update(
@@ -229,7 +227,6 @@ async def get_users_at(chat_id: ChatId, user_ids: list[UserId]) -> list[datetime
 
 async def log(to_log: Log) -> InsertOneResult | UpdateResult:
     match to_log:
-
         case ServiceLog():
             return await logs.insert_one(to_log.as_dict())
 
@@ -307,7 +304,6 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
 
         # Collecting results
         async for u in cursor:
-
             if not "user_id" in u or not "chat_id" in u:
                 continue
 
@@ -321,7 +317,6 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
                 to_notify.append(User(u["user_id"], u["chat_id"]))
 
             if tried_6h_ago_and_got_alert(u):
-
                 if u["chat_id"] in banners:
                     if not hh(uid, cid) in banned:
                         to_ban.append(User(u["user_id"], u["chat_id"]))
@@ -340,6 +335,7 @@ async def background_task(context: ContextTypes.DEFAULT_TYPE | None) -> None | i
                 "chat_id": {"$in": [u.chat_id for u in to_deny_and_remove]},
             }
         )
+
         # Declining pending join requests with exceptions masked
         # as there is no way to determine with certainty if the target join request was taken back or not
         async def deny_notify(user: User):

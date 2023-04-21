@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from asyncio import create_task, get_running_loop
 from datetime import datetime
-from itertools import pairwise
 from functools import reduce
+from itertools import pairwise
 from typing import (
     Any,
     Callable,
@@ -13,8 +15,8 @@ from typing import (
     OrderedDict,
     TypeAlias,
 )
-from asyncio import create_task, get_running_loop
 
+from telegram import Update
 from telegram.helpers import escape_markdown
 
 ChatId: TypeAlias = int | str
@@ -173,6 +175,48 @@ class Settings(AsDict):
 
     def __len__(self) -> int:
         return len(self.as_dict())
+
+
+class ChatData(NamedTuple):
+    chat_id: int
+    user_id: int
+    message_text: str
+
+    @classmethod
+    def from_update(cls, update: Update) -> ChatData | None:
+        try:
+            return cls(
+                user_id=update.message.from_user.id,
+                chat_id=update.message.chat_id,
+                message_text=update.message.text,
+            )
+        except Exception:
+            return None
+
+
+class ChatJoinRequestData(NamedTuple):
+    chat_id: int
+    chat_name: str
+    from_user_id: int
+    user_chat_id: int
+    from_user_name: str
+
+    @classmethod
+    def from_update(cls, update: Update) -> ChatJoinRequestData | None:
+        request = update.chat_join_request
+        if not request:
+            return
+        try:
+            return cls(
+                chat_id=request.chat.id,
+                chat_name=request.chat.username,
+                from_user_id=request.from_user.id,
+                user_chat_id=request.user_chat_id,
+                from_user_name=request.from_user.username
+                or request.from_user.first_name,
+            )
+        except Exception:
+            return None
 
 
 Operation = Literal[

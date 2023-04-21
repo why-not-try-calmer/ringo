@@ -1,6 +1,7 @@
-import pytest
-from typing import Any, Coroutine
 from asyncio import as_completed, gather, get_event_loop_policy
+from typing import Any, Coroutine
+
+import pytest
 
 from app.db import background_task, fetch_chat_ids, fetch_settings, get_status
 
