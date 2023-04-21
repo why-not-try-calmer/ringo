@@ -3,11 +3,11 @@
 
 ## Overview
 
-This bot provides a simple click-based verification workflow for your Telegram users. It requires that you have enabled the options `Only members can send messages` as well as `Use chat join requests`; only the latter is strictly necessary but goes hand in hand with the former. 
+This bot provides a simple click-based verification workflow for your Telegram users. It requires that you have enabled the options `Only members can send messages` as well as `Use chat join requests`; only the latter is strictly necessary but goes hand in hand with the former.
 
 You can see [the bot](https://t.me/alert_me_and_my_chat_bot) in action [here](https://t.me/PopOS_en).
 
-If you like the bot, feel free to use it in your own chats, fork this repository or even pay a coffee or a beer to the developer. At any rate please mind the LICENSE. 
+If you like the bot, feel free to use it in your own chats, fork this repository or even pay a coffee or a beer to the developer. At any rate please mind the LICENSE.
 
 ## How it works
 
@@ -34,7 +34,7 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     - `chat_id`: the chat_id of the chat where the bot should listen for join requests (you cannot manually set this value)
     - `chat_url`: the full url (https://t.me/...) of the chat where the bot should listen for join requests (you can and __should__ set this value)
     - `mode <auto | manual | questionnaire>`: see the previous section for explanations
-    - `helper_chat_id_`: chat_id of the chat to which the both should forward join requests notifications (only used in __manual__ mode)  
+    - `helper_chat_id_`: chat_id of the chat to which the both should forward join requests notifications (only used in __manual__ mode)
     - `verification_msg`: the message the bot should send to users trying to verify after landing a join requests. Naturall it's not convenient to set a long verification message in this way, so for that key it might be preferable to use a line break, as in:
     ```
     /set mode auto verification_message
@@ -48,7 +48,7 @@ The bot uses exactly two commands in addition to `/help` (which aliases to `/sta
     Question 2: ...
     Question 3: ...
     Thanks very much! Admins will now accept or decline your join request.
-    ``` 
+    ```
     - `paused <on | off>`: _off_ pauses the bot for this chat, _off_ makes it active
     - `show_join_time <on | off>`: _off_ does not show the time it took for a user to join the target chat after being sent an invite, _on_ shows it
     - `changelog < on | off>`: _off_ lets you opt-out of changelog notification messages

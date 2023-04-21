@@ -1,29 +1,30 @@
-from sys import argv
 from os import environ
+from sys import argv
+
+from telegram import Message
 from telegram.ext import (
     Application,
-    ChatJoinRequestHandler,
-    MessageHandler,
-    CommandHandler,
     CallbackQueryHandler,
+    ChatJoinRequestHandler,
+    CommandHandler,
+    MessageHandler,
     filters,
 )
 from telegram.ext.filters import MessageFilter
-from telegram import Message
 
+from app import dialog_manager
 from app.handlers import (
     admin_op,
+    answering_help,
     expected_dialog,
     getting_status,
-    replying_to_bot,
-    wants_to_join,
-    processing_cbq,
-    answering_help,
-    setting_bot,
-    resetting,
     has_joined,
+    processing_cbq,
+    replying_to_bot,
+    resetting,
+    setting_bot,
+    wants_to_join,
 )
-from app import dialog_manager
 
 
 class Dialog(MessageFilter):
@@ -68,6 +69,7 @@ if __name__ == "__main__":
     """
 
     from os import path
+
     import uvloop
 
     TOKEN = environ["TOKEN"]

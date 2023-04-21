@@ -1,5 +1,5 @@
 from asyncio import as_completed
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from functools import wraps
 from typing import Any, Callable, Coroutine, Generator, Iterable
 
@@ -31,7 +31,7 @@ def mention_markdown(user_id: UserId, username: str) -> str:
     return f"[{username}](tg://user?id={user_id})"
 
 
-def admins_ids_mkup(admins: list[ChatMember]) -> str:
+def admins_ids_mkup(admins: Iterable[ChatMember]) -> str:
     return ", ".join(
         [
             mention_markdown(

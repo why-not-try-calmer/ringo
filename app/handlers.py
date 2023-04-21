@@ -23,7 +23,9 @@ from app.db import (
     upsert_settings,
 )
 from app.types import (
+    ChatData,
     ChatId,
+    ChatJoinRequestData,
     Dialog,
     Mode,
     Questionnaire,
@@ -47,27 +49,33 @@ from app.utils import (
 
 
 async def answering_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_data = ChatData.from_update(update)
+    if not chat_data:
+        return
     reply = strings["commands"]["help"]
     await context.bot.send_message(
-        chat_id, reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+        chat_data.chat_id,
+        reply,
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True,
     )
 
 
 @withAuth
 async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    received = update.message.text
-    chat_id = update.message.chat_id
-    s = received.split(" ")
+    chat_data = ChatData.from_update(update)
+    if not chat_data:
+        return
+    s = chat_data.message_text.split(" ")
     reply = ""
 
     if len(s) == 1 or s[1] == "":
         # Get
-        if fetched := await fetch_settings(chat_id):
+        if fetched := await fetch_settings(chat_data.chat_id):
             reply = strings["settings"]["settings"] + fetched.render(with_alert=True)
         else:
             reply = strings["settings"]["none_found"]
-    elif settings := Settings(received, chat_id):
+    elif settings := Settings(chat_data.message_text, chat_data.chat_id):
         # Set
         if updated := await upsert_settings(settings):
             questionnaire: Mode = "questionnaire"
@@ -82,21 +90,20 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     rep = ""
 
                     if q := Questionnaire.parse(answers):
-                        await upsert_questionnaire(chat_id, q)
+                        await upsert_questionnaire(chat_data.chat_id, q)
                         rep = "Thanks, the questionnaire reads:\n" + q.render()
 
                     else:
                         rep = "Failed to parse your message into a valid questionnaire. Please start over."
 
-                    await context.bot.send_message(chat_id, rep)
+                    await context.bot.send_message(chat_data.chat_id, rep)
 
                 # Setting up state to detect the reply
-                user_id = update.message.from_user.id
                 dialog_manager.add(
-                    user_id,
+                    chat_data.user_id,
                     Reply(
-                        user_id,
-                        chat_id,
+                        chat_data.user_id,
+                        chat_data.chat_id,
                         extractor_closure,
                     ),
                 )
@@ -109,53 +116,50 @@ async def setting_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # No parse
         reply = strings["settings"]["failed_to_parse"]
     await context.bot.send_message(
-        chat_id, reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+        chat_data.chat_id,
+        reply,
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True,
     )
 
 
 @withAuth
 async def resetting(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+    chat_data = ChatData.from_update(update)
+    if not chat_data:
+        return
 
     reply = strings["settings"]["reset"]
     await gather(
-        reset(chat_id),
-        context.bot.send_message(chat_id, reply, disable_web_page_preview=True),
+        reset(chat_data.chat_id),
+        context.bot.send_message(
+            chat_data.chat_id, reply, disable_web_page_preview=True
+        ),
     )
 
 
 async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    request = update.chat_join_request
-    user_id, user_name, chat_id, chat_name = (
-        request.from_user.id,
-        request.from_user.username or request.from_user.first_name,
-        request.chat.id,
-        request.chat.username,
-    )
-
+    req = ChatJoinRequestData.from_update(update)
+    if not req:
+        return
     admins, settings = await gather(
-        context.bot.get_chat_administrators(chat_id), fetch_settings(chat_id)
+        context.bot.get_chat_administrators(req.chat_id), fetch_settings(req.chat_id)
     )
     alert = admins_ids_mkup(admins) if admins else ""
-
     # Missing settings
     if not settings:
         return await context.bot.send_message(
-            chat_id, strings["settings"]["missing"], disable_web_page_preview=True
+            req.chat_id, strings["settings"]["missing"], disable_web_page_preview=True
         )
-
     # Paused
     if hasattr(settings, "paused") and settings.paused:
         return
-
     if hasattr(settings, "mode"):
-
         match settings.mode:
-
             case "auto":
                 await gather(
                     context.bot.send_message(
-                        user_id,
+                        req.user_chat_id,
                         settings.verification_msg
                         if settings.verification_msg
                         and len(settings.verification_msg) >= 10
@@ -163,13 +167,20 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         disable_web_page_preview=True,
                         reply_markup=agree_btn(
                             strings["wants_to_join"]["ok"],
-                            chat_id,
+                            req.chat_id,
                             strings["chat"]["url"]
                             if not settings.chat_url
                             else settings.chat_url,
                         ),
                     ),
-                    log(UserLog("wants_to_join", chat_id, user_id, user_name)),
+                    log(
+                        UserLog(
+                            "wants_to_join",
+                            req.chat_id,
+                            req.from_user_id,
+                            req.from_user_name,
+                        )
+                    ),
                 )
 
             case "manual":
@@ -181,27 +192,27 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode=ParseMode.MARKDOWN,
                         disable_web_page_preview=True,
                         reply_markup=accept_or_reject_btns(
-                            user_id,
-                            user_name,
-                            chat_id,
+                            req.from_user_id,
+                            req.from_user_name,
+                            req.chat_id,
                             strings["chat"]["url"]
                             if not settings.chat_url
                             else settings.chat_url,
                         ),
                     )
-                    await add_pending(chat_id, user_id, response.message_id)
+                    await add_pending(
+                        req.chat_id, req.from_user_id, response.message_id
+                    )
 
                 if hasattr(settings, "helper_chat_id") and settings.helper_chat_id:
-                    body = f"{mention_markdown(user_id, user_name)} has just asked to join your chat {mention_markdown(chat_id, chat_name)}, you might want to accept them."
+                    body = f"{mention_markdown(req.from_user_id, req.from_user_name)} has just asked to join your chat {mention_markdown(req.chat_id, req.chat_name)}, you might want to accept them."
                     await closure_send(settings.helper_chat_id, alert + "\n" + body)
                 else:
-                    body = f"{mention_markdown(user_id, user_name)} just joined, but I couldn't find any chat to notify."
-                    await closure_send(chat_id, alert + "\n" + body)
+                    body = f"{mention_markdown(req.from_user_id, req.from_user_name)} just joined, but I couldn't find any chat to notify."
+                    await closure_send(req.chat_id, alert + "\n" + body)
 
             case "questionnaire":
-
                 if q := settings.questionnaire:
-
                     questions = q.questions
 
                     async def extractor_closure(answers: list[str]) -> None:
@@ -211,23 +222,23 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 for q, a in zip(questions, answers)
                             ]
                         )
-                        reply = f"@{mention_markdown(user_id, user_name)} has just requested to join this chat. Their answers to the questionnaire are as follows:\n{escape_markdown(q_a)}"
+                        reply = f"@{mention_markdown(req.from_user_id, req.from_user_name)} has just requested to join this chat. Their answers to the questionnaire are as follows:\n{escape_markdown(q_a)}"
                         keyboard = accept_or_reject_btns(
-                            user_id, user_name, chat_id, ""
+                            req.from_user_id, req.from_user_name, req.chat_id, ""
                         )
                         await context.bot.send_message(
-                            chat_id,
+                            req.chat_id,
                             reply,
                             reply_markup=keyboard,
                             parse_mode=ParseMode.MARKDOWN,
                         )
 
-                    dialog = Dialog(user_id, chat_id, q, extractor_closure)
+                    dialog = Dialog(req.from_user_id, req.chat_id, q, extractor_closure)
                     dialog.start()
                     reply = dialog.take_reply()
-                    dialog_manager.add(user_id, dialog)
+                    dialog_manager.add(req.from_user_id, dialog)
                     await context.bot.send_message(
-                        user_id, dialog.intro + ("\n" + reply) if reply else ""
+                        req.user_chat_id, dialog.intro + ("\n" + reply) if reply else ""
                     )
 
             case _:
@@ -322,7 +333,6 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = ""
 
     match operation:
-
         case "accept":
             response = await context.bot.approve_chat_join_request(chat_id, user_id)
             if response:
@@ -475,16 +485,13 @@ async def expected_dialog(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
     if "/cancel" in text:
-
         dialog_manager.cancel(user_id)
         user_id = update.message.from_user.id
         reply = "Okay, starting over"
         return await context.bot.send_message(user_id, reply)
 
     if dialog := dialog_manager[user_id]:
-
         match dialog:
-
             case Dialog():
                 if reply := dialog.take_reply(text):
                     await context.bot.send_message(user_id, reply)
