@@ -300,6 +300,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         splitted[0],
         splitted[1],
         splitted[2],
+        splitted[3],
     )
 
     # Auto mode
