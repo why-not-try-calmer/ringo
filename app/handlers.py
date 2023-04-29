@@ -227,6 +227,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         keyboard = accept_or_reject_btns(
                             req.from_user_id, req.from_user_name, req.chat_id, ""
                         )
+
                         await context.bot.send_message(
                             req.chat_id,
                             reply,
@@ -238,6 +239,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     dialog.start()
                     reply = dialog.take_reply()
                     dialog_manager.add(req.from_user_id, dialog)
+
                     await context.bot.send_message(
                         req.user_chat_id, dialog.intro + ("\n" + reply) if reply else ""
                     )
