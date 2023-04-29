@@ -166,9 +166,10 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         else strings["wants_to_join"]["verification_msg"],
                         disable_web_page_preview=True,
                         reply_markup=agree_btn(
-                            strings["wants_to_join"]["ok"],
-                            req.chat_id,
-                            strings["chat"]["url"]
+                            text=strings["wants_to_join"]["ok"],
+                            from_chat_id=req.user_chat_id,
+                            target_chat_id=req.chat_id,
+                            target_chat_url=strings["chat"]["url"]
                             if not settings.chat_url
                             else settings.chat_url,
                         ),
@@ -226,6 +227,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         keyboard = accept_or_reject_btns(
                             req.from_user_id, req.from_user_name, req.chat_id, ""
                         )
+
                         await context.bot.send_message(
                             req.chat_id,
                             reply,
@@ -237,6 +239,7 @@ async def wants_to_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     dialog.start()
                     reply = dialog.take_reply()
                     dialog_manager.add(req.from_user_id, dialog)
+
                     await context.bot.send_message(
                         req.user_chat_id, dialog.intro + ("\n" + reply) if reply else ""
                     )
@@ -293,27 +296,33 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 'Parsing'
     splitted = update.callback_query.data.split("§")
-    operation, chat_id_str, chat_url = splitted[0], splitted[1], splitted[2]
+    operation, from_user_chat_id, target_chat_id_str, target_chat_url = (
+        splitted[0],
+        splitted[1],
+        splitted[2],
+    )
 
     # Auto mode
     if operation == "self-confirm":
-        await context.bot.answer_callback_query(update.callback_query.id)
-        await context.bot.send_message(
-            update.callback_query.from_user.id,
-            f"Thanks, you are welcome to join {chat_url}. {strings['has_joined']['post_join']}",
-            disable_web_page_preview=True,
-        )
-        await context.bot.approve_chat_join_request(
-            chat_id_str, update.callback_query.from_user.id
-        )
-        await log(
-            UserLog(
-                "has_verified",
-                update.callback_query.from_user.id,
-                update.callback_query.from_user.id,
-                update.callback_query.from_user.username
-                or update.callback_query.from_user.first_name,
-            )
+        await gather(
+            context.bot.answer_callback_query(update.callback_query.id),
+            context.bot.send_message(
+                from_user_chat_id,
+                f"Thanks, you are welcome to join {target_chat_url}. {strings['has_joined']['post_join']}",
+                disable_web_page_preview=True,
+            ),
+            context.bot.approve_chat_join_request(
+                target_chat_id_str, update.callback_query.from_user.id
+            ),
+            log(
+                UserLog(
+                    "has_verified",
+                    update.callback_query.from_user.id,
+                    update.callback_query.from_user.id,
+                    update.callback_query.from_user.username
+                    or update.callback_query.from_user.first_name,
+                )
+            ),
         )
         return
 
@@ -321,7 +330,7 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Setting up verdict handling
     user_id_str, user_name = splitted[3], splitted[4]
     user_id = int(user_id_str)
-    chat_id = int(chat_id_str)
+    chat_id = int(target_chat_id_str)
     confirmation_chat_id = update.callback_query.message.chat.id
     admin_name = (
         update.callback_query.from_user.username
@@ -336,14 +345,16 @@ async def processing_cbq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         case "accept":
             response = await context.bot.approve_chat_join_request(chat_id, user_id)
             if response:
-                reply = f"{user_name} accepted to {chat_id_str} by {admin_name}"
+                reply = f"{user_name} accepted to {target_chat_id_str} by {admin_name}"
             else:
                 reply = "User already approved"
 
         case "reject":
             response = await context.bot.decline_chat_join_request(chat_id, user_id)
             if response:
-                reply = f"{user_name} denied access to {chat_id_str} by {admin_name}"
+                reply = (
+                    f"{user_name} denied access to {target_chat_id_str} by {admin_name}"
+                )
             else:
                 reply = "User already denied."
         case _:
